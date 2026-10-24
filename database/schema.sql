@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS catalog_items (
   id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   name        VARCHAR(150) NOT NULL,
-  category    ENUM('Extinguisher','FDAS','Service') NOT NULL,
+  category    ENUM('Extinguisher','FDAS','Suppression System','Service') NOT NULL,
   description TEXT NULL,
   is_active   TINYINT(1) NOT NULL DEFAULT 1,
   created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -95,11 +95,17 @@ CREATE TABLE IF NOT EXISTS quotation_items (
   CONSTRAINT fk_qi_item FOREIGN KEY (item_id) REFERENCES catalog_items(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
--- SAMPLE catalog data for development. Replace with your client's real products and services.
+-- Catalog data. Extinguisher types and the kitchen hood system come from the client's product list.
+-- The FDAS and Service rows are still SAMPLES: replace them with the client's real offerings.
 INSERT INTO catalog_items (name, category, description) VALUES
- ('ABC Dry Chemical Fire Extinguisher', 'Extinguisher', 'Multi-purpose extinguisher for ordinary combustibles, flammable liquids and electrical fires.'),
- ('CO2 Fire Extinguisher', 'Extinguisher', 'Clean-agent extinguisher suited for electrical equipment and server rooms.'),
- ('Foam (AFFF) Fire Extinguisher', 'Extinguisher', 'Suited for flammable liquid and ordinary combustible fires.'),
+ ('Dry Chemical (ABC) Extinguisher - 2.2 lbs / 1 kg', 'Extinguisher', 'Compact option for suitable applications and limited spaces.'),
+ ('Dry Chemical (ABC) Extinguisher - 5 lbs / 2.3 kg', 'Extinguisher', 'Suitable for light motor vehicles and other appropriate applications.'),
+ ('Dry Chemical (ABC) Extinguisher - 10 lbs / 4.5 kg', 'Extinguisher', 'For homes and various commercial applications.'),
+ ('Dry Chemical (ABC) Extinguisher - 20 lbs / 9.1 kg', 'Extinguisher', 'For applications requiring greater extinguishing capacity.'),
+ ('Dry Chemical (ABC) Extinguisher - 50 lbs (Wheeled)', 'Extinguisher', 'Wheeled unit for larger fire risks and greater extinguishing capacity.'),
+ ('Foam Type (AFFF) Extinguisher - 20 lbs / 9.1 kg', 'Extinguisher', 'Suitable for specific applications involving flammable liquids and other compatible fire risks.'),
+ ('Foam Type (AFFF) Extinguisher - 50 lbs (Wheeled)', 'Extinguisher', 'A wheeled foam extinguisher designed for larger fire risks involving compatible flammable liquids and other suitable applications.'),
+ ('Kitchen Hood Fire Suppression System', 'Suppression System', 'Fire protection designed for commercial kitchens. Protect your cooking equipment, kitchen hood, and surrounding areas with a professionally designed kitchen hood suppression system.'),
  ('Conventional Fire Detection and Alarm System (FDAS)', 'FDAS', 'Zone-based detection and alarm system for small to medium buildings.'),
  ('Addressable Fire Detection and Alarm System (FDAS)', 'FDAS', 'Device-level detection and alarm system for larger buildings.'),
  ('Fire Extinguisher Inspection', 'Service', 'On-site inspection of extinguishers.'),

@@ -1,8 +1,70 @@
 :root {
   --brand-red: #c62828;
+  --brand-red-dark: #a81f1f;
   --brand-yellow: #f5b301;
   --brand-charcoal: #23262b;
+  --cream: #fdf9f0;
+  --card-border: #ece6d8;
 }
-.app-navbar { background-color: var(--brand-charcoal); border-bottom: 4px solid var(--brand-red); }
-.app-footer { background-color: var(--brand-charcoal); color: #c9ccd1; }
-.btn-danger { background-color: var(--brand-red); border-color: var(--brand-red); }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  background: var(--cream);
+  color: var(--brand-charcoal);
+}
+
+/* Navbar */
+.app-navbar { background: var(--cream); padding: .5rem 0; }
+.app-navbar .nav-link { color: var(--brand-charcoal); font-weight: 600; }
+.app-brand { padding: 0; }
+.app-brand img { display: block; width: auto; height: 68px; }
+
+/* Buttons */
+.btn-brand,
+.btn-outline-brand { font-weight: 700; border: 2px solid; border-radius: 8px; }
+
+.btn-brand { background: var(--brand-red); border-color: var(--brand-red); color: #fff; }
+.btn-brand:hover,
+.btn-brand:focus { background: var(--brand-red-dark); border-color: var(--brand-red-dark); color: #fff; }
+
+.btn-outline-brand { background: transparent; border-color: var(--brand-charcoal); color: var(--brand-charcoal); }
+.btn-outline-brand:hover,
+.btn-outline-brand:focus { background: var(--brand-charcoal); color: #fff; }
+
+/* Hero */
+.hero { text-align: center; padding: 4.5rem 0 3.5rem; }
+.hero-pill { font-size: .9rem; font-weight: 600; margin-bottom: 1.5rem; }
+.hero h1 {
+  font-weight: 800;
+  font-size: clamp(2.4rem, 6vw, 4.5rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+.hero .highlight {
+  display: inline-block;
+  background: #D181CC;
+  padding: 0.02em 0.2em 0.08em;
+  border-radius: .15em;
+  line-height: 0.9;
+  transform: translateY(-0.04em);
+}
+.hero .lead { max-width: 36rem; margin: 1.5rem auto 2rem; }
+
+/* How it works */
+.step-card {
+  height: 100%;
+  padding: 1.5rem;
+  background: #fff;
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+}
+.step-num { font-size: 2rem; font-weight: 800; color: var(--brand-red); }
+
+/* Footer */
+.app-footer { background: var(--brand-charcoal); color: #c9ccd1; }
+
+/* Responsive */
+@media (max-width: 991.98px) { .app-brand img { height: 52px; } }
+@media (max-width: 575.98px) { .app-brand img { height: 44px; } }

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Register{% endblock %}
+
+{% macro field(name, label, type="text", placeholder="", autocomplete="", hint="") %}
+  <label class="form-label fw-semibold" for="{{ name }}">{{ label }}</label>
+  <input class="form-control{% if errors.get(name) %} is-invalid{% endif %}"
+         id="{{ name }}" name="{{ name }}" type="{{ type }}"
+         value="{{ form.get(name, '') if type != 'password' else '' }}"
+         placeholder="{{ placeholder }}" autocomplete="{{ autocomplete }}" required>
+  <div class="invalid-feedback" id="{{ name }}-error">{{ errors.get(name, '') }}</div>
+  {% if hint %}<div class="form-text">{{ hint }}</div>{% endif %}
+{% endmacro %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8 col-lg-6">
+    <div class="step-card">
+      <h1 class="h3 fw-bold mb-1">Create your account</h1>
+      <p class="text-muted">Register to request quotes and free inspections.</p>
+
+      <form method="post" action="{{ url_for('auth.register') }}" data-form="register" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="row g-3">
+          <div class="col-sm-6">{{ field("first_name", "First name", autocomplete="given-name") }}</div>
+          <div class="col-sm-6">{{ field("last_name", "Last name", autocomplete="family-name") }}</div>
+          <div class="col-12">
+            {{ field("email", "Email", "email", "you@gmail.com", "email") }}
+            <div class="form-text" id="email-suggest"></div>
+          </div>
+          <div class="col-12">{{ field("contact_number", "Contact number", "tel", "09171234567", "tel", "11 digits, starts with 09") }}</div>
+          <div class="col-12">{{ field("company_name", "Company name", autocomplete="organization") }}</div>
+          <div class="col-sm-6">{{ field("password", "Password", "password", autocomplete="new-password", hint="At least 8 characters with a number") }}</div>
+          <div class="col-sm-6">{{ field("confirm_password", "Confirm password", "password", autocomplete="new-password") }}</div>
+        </div>
+        <button class="btn btn-brand w-100 mt-4" type="submit">Create account</button>
+      </form>
+      <p class="text-center mt-3 mb-0">Already have an account? <a href="{{ url_for('auth.login') }}">Log in</a></p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}<script src="{{ url_for('static', filename='js/validation.js') }}"></script>{% endblock %}

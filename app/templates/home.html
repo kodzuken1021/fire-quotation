@@ -1,9 +1,22 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="py-5 text-center">
-  <h1 class="display-5 fw-bold">Fire protection products and services, quoted for you</h1>
-  <p class="lead text-muted">Browse extinguishers, fire alarm systems and services, then request a quote and a free inspection.</p>
-  <a class="btn btn-danger btn-lg" href="{{ url_for('auth.register') }}">Request a Quote</a>
-  <a class="btn btn-outline-secondary btn-lg" href="{{ url_for('auth.login') }}">Log in</a>
-</div>
+<section class="hero">
+  <p class="hero-pill"><strong>New</strong> <span class="mx-2 text-muted">|</span> Free on-site inspection available</p>
+  <h1>Fire protection,<br>priced for your <span class="highlight">site</span></h1>
+  <p class="lead">Fire extinguishers, kitchen hood suppression and fire alarm systems. Tell us what you need and receive an official quotation by email.</p>
+  <div class="d-flex justify-content-center gap-2 flex-wrap">
+    <a class="btn btn-brand btn-lg" href="{{ url_for('auth.register') }}">Request a Quote</a>
+    <a class="btn btn-outline-brand btn-lg" href="#how-it-works">How it works</a>
+  </div>
+</section>
+
+<section id="how-it-works" class="py-5">
+  <h2 class="text-center fw-bold mb-4">How it works</h2>
+  <div class="row g-3">
+    <div class="col-md-6 col-lg-3"><div class="step-card"><div class="step-num">1</div><h3 class="h5 fw-bold">Browse the catalog</h3><p class="mb-0 text-muted">See our extinguishers, suppression systems and services.</p></div></div>
+    <div class="col-md-6 col-lg-3"><div class="step-card"><div class="step-num">2</div><h3 class="h5 fw-bold">Request a quote</h3><p class="mb-0 text-muted">Log in, choose what you need and submit the form.</p></div></div>
+    <div class="col-md-6 col-lg-3"><div class="step-card"><div class="step-num">3</div><h3 class="h5 fw-bold">Free inspection</h3><p class="mb-0 text-muted">Ask for an on-site inspection and get the schedule by email.</p></div></div>
+    <div class="col-md-6 col-lg-3"><div class="step-card"><div class="step-num">4</div><h3 class="h5 fw-bold">Get your quotation</h3><p class="mb-0 text-muted">We review your request and email the official quotation.</p></div></div>
+  </div>
+</section>
 {% endblock %}
