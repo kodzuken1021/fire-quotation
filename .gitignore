@@ -1,0 +1,15 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+# Secrets and local data
+.env
+instance/*
+!instance/.gitkeep
+app/static/uploads/*
+!app/static/uploads/.gitkeep
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,8 @@
+:root {
+  --brand-red: #c62828;
+  --brand-yellow: #f5b301;
+  --brand-charcoal: #23262b;
+}
+.app-navbar { background-color: var(--brand-charcoal); border-bottom: 4px solid var(--brand-red); }
+.app-footer { background-color: var(--brand-charcoal); color: #c9ccd1; }
+.btn-danger { background-color: var(--brand-red); border-color: var(--brand-red); }
