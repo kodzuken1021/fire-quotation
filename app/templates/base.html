@@ -37,15 +37,8 @@
   </div>
 </nav>
 
-  <main class="container py-4 flex-grow-1">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% for category, message in messages %}
-        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-          {{ message }}
-          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-      {% endfor %}
-    {% endwith %}
+    <main class="{% block main_class %}container py-4{% endblock %} flex-grow-1">
+    {% block flashes %}{% include "_flashes.html" %}{% endblock %}
     {% block content %}{% endblock %}
   </main>
 

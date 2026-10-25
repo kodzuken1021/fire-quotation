@@ -31,7 +31,7 @@
     if (fix) return "Did you mean " + fix + "?";
     if (FAKE_DOMAINS.includes(domain)) return "Please use a real email address.";
     if (RESTRICT_DOMAINS && !ALLOWED_DOMAINS.includes(domain) && !ALLOWED_SUFFIXES.some(s => domain.endsWith(s)))
-      return "Use a recognized email provider (Gmail, Yahoo, Hotmail, Outlook, iCloud, AOL) or a school .edu.ph address.";
+      return "Use a recognized email provider (Gmail, Yahoo, Hotmail, Outlook, iCloud, AOL)";
     return "";
   }
 
@@ -63,7 +63,7 @@
   function check(input, form, rules) {
     const rule = rules[input.name];
     if (!rule) return true;
-    const isPassword = input.type === "password";
+    const isPassword = input.type === "password" || input.classList.contains("has-toggle");
     const value = isPassword ? input.value : input.value.trim();
     const ok = show(input, rule(value, form));
     if (input.name === "email" && form.dataset.form === "register") suggestEmail(input, form);
@@ -99,6 +99,17 @@
         show(input, "That email domain does not exist.");
     } catch (e) { /* offline or blocked: skip, the server will check */ }
   }
+  // Show / hide password buttons
+  document.querySelectorAll(".pw-toggle").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const input = document.getElementById(btn.dataset.target);
+      const show = input.type === "password";
+      input.type = show ? "text" : "password";
+      btn.classList.toggle("is-shown", show);
+      btn.setAttribute("aria-pressed", String(show));
+      btn.setAttribute("aria-label", show ? "Hide password" : "Show password");
+    });
+  });
 
   document.querySelectorAll("form[data-form]").forEach(form => {
     const mode = form.dataset.form;

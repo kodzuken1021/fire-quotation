@@ -1,29 +1,36 @@
 {% extends "base.html" %}
 {% block title %}Log in{% endblock %}
-{% block content %}
-<div class="row justify-content-center">
-  <div class="col-md-7 col-lg-5">
-    <div class="step-card">
-      <h1 class="h3 fw-bold mb-1">Log in</h1>
-      <p class="text-muted">Welcome back.</p>
+{% block main_class %}auth-main{% endblock %}
+{% block flashes %}{% endblock %}
+{% block footer %}{% endblock %}
 
-      <form method="post" action="{{ url_for('auth.login') }}" data-form="login" novalidate>
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <div class="mb-3">
-          <label class="form-label fw-semibold" for="email">Email</label>
-          <input class="form-control" id="email" name="email" type="email" value="{{ email }}" autocomplete="email" required>
-          <div class="invalid-feedback" id="email-error"></div>
-        </div>
-        <div class="mb-3">
-          <label class="form-label fw-semibold" for="password">Password</label>
-          <input class="form-control" id="password" name="password" type="password" autocomplete="current-password" required>
-          <div class="invalid-feedback" id="password-error"></div>
-        </div>
-        <button class="btn btn-brand w-100" type="submit">Log in</button>
-      </form>
-      <p class="text-center mt-3 mb-0">No account yet? <a href="{{ url_for('auth.register') }}">Register</a></p>
-    </div>
-  </div>
+{% block content %}
+<div class="auth-card auth-card--sm">
+  {% with aside_lead="Pick up where you", aside_hl="left off.", aside_text="See where your requests and inspections stand." %}
+  {% include "_auth_aside.html" %}
+{% endwith %}
+  <section class="auth-panel">
+    {% include "_flashes.html" %}
+    <h1 class="auth-title">Welcome back</h1>
+    <p class="auth-sub">Log in to track your quote requests.</p>
+
+    <form class="auth-form" method="post" action="{{ url_for('auth.login') }}" data-form="login" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-floating mb-3">
+        <input class="form-control" id="email" name="email" type="email" value="{{ email }}" placeholder="Email" autocomplete="email" required>
+        <label for="email">Email</label>
+        <div class="invalid-feedback" id="email-error"></div>
+      </div>
+      <div class="form-floating mb-4">
+        <input class="form-control has-toggle" id="password" name="password" type="password" placeholder="Password" autocomplete="current-password" required>
+        <label for="password">Password</label>
+        <button type="button" class="pw-toggle" data-target="password" aria-label="Show password" aria-pressed="false">{% include "_eye_icons.html" %}</button>
+<div class="invalid-feedback" id="password-error"></div>
+      </div>
+      <button class="btn btn-brand btn-lg w-100" type="submit">Log in</button>
+    </form>
+    <p class="auth-switch">No account yet? <a href="{{ url_for('auth.register') }}">Register</a></p>
+  </section>
 </div>
 {% endblock %}
 
