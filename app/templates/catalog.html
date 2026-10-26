@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Catalog{% endblock %}
+
+{% block content %}
+<section class="catalog-head">
+  <h1 class="catalog-title">Catalog</h1>
+  <p class="catalog-sub">Browse our fire protection products and services. Prices are shared only in your official quotation.</p>
+
+  <form class="catalog-search" method="get" action="{{ url_for('main.catalog') }}" role="search">
+    {% if category %}<input type="hidden" name="category" value="{{ category }}">{% endif %}
+    <input class="form-control" type="search" name="q" value="{{ q }}" maxlength="60" placeholder="Search products and services" aria-label="Search products and services">
+    <button class="btn btn-brand" type="submit">Search</button>
+  </form>
+
+  <div class="chip-row">
+    <a class="chip{% if not category %} active{% endif %}" href="{{ url_for('main.catalog', q=q or None) }}">All <span>{{ counts.values()|sum }}</span></a>
+    {% for c in categories %}
+      <a class="chip{% if category == c %} active{% endif %}" href="{{ url_for('main.catalog', category=c, q=q or None) }}">{{ c }} <span>{{ counts.get(c, 0) }}</span></a>
+    {% endfor %}
+  </div>
+</section>
+
+{% if not groups %}
+  <div class="catalog-empty">
+    <h2 class="h5 fw-bold">Nothing matches your search</h2>
+    <p class="text-muted mb-3">Try a different word or clear the filters.</p>
+    <a class="btn btn-outline-brand" href="{{ url_for('main.catalog') }}">Clear filters</a>
+  </div>
+{% endif %}
+
+{% for name, items in groups %}
+  <section class="catalog-group">
+    {% if not category %}<h2 class="catalog-group-title">{{ name }}</h2>{% endif %}
+    <div class="row g-3">
+      {% for item in items %}
+      <div class="col-md-6 col-lg-4">
+        <article class="catalog-card">
+          <span class="cat-tag cat-{{ item.category|lower|replace(' ', '-') }}">{{ item.category }}</span>
+          <h3 class="catalog-card-title">{{ item.name }}</h3>
+          <p class="catalog-card-text">{{ item.description }}</p>
+          {# Day 6: link this button to the quote request form with this item selected #}
+          <a class="btn btn-brand btn-sm"
+             href="{{ url_for('client.dashboard') if session.get('user_id') else url_for('auth.register') }}">Request a quote</a>
+        </article>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+{% endfor %}
+{% endblock %}

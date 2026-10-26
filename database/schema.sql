@@ -97,7 +97,7 @@ CREATE TABLE IF NOT EXISTS quotation_items (
 
 -- Catalog data. Extinguisher types and the kitchen hood system come from the client's product list.
 -- The FDAS and Service rows are still SAMPLES: replace them with the client's real offerings.
-INSERT INTO catalog_items (name, category, description) VALUES
+INSERT IGNORE INTO catalog_items (name, category, description) VALUES
  ('Dry Chemical (ABC) Extinguisher - 2.2 lbs / 1 kg', 'Extinguisher', 'Compact option for suitable applications and limited spaces.'),
  ('Dry Chemical (ABC) Extinguisher - 5 lbs / 2.3 kg', 'Extinguisher', 'Suitable for light motor vehicles and other appropriate applications.'),
  ('Dry Chemical (ABC) Extinguisher - 10 lbs / 4.5 kg', 'Extinguisher', 'For homes and various commercial applications.'),

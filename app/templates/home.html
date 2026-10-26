@@ -1,14 +1,30 @@
 {% extends "base.html" %}
 {% block content %}
-<section class="hero">
-  <p class="hero-pill"><strong>New</strong> <span class="mx-2 text-muted">|</span> Free on-site inspection available</p>
-  <h1>Fire protection,<br>priced for your <span class="highlight">site</span></h1>
-  <p class="lead">Fire extinguishers, kitchen hood suppression and fire alarm systems. Tell us what you need and receive an official quotation by email.</p>
-  <div class="d-flex justify-content-center gap-2 flex-wrap">
-    <a class="btn btn-brand btn-lg" href="{{ url_for('auth.register') }}">Request a Quote</a>
-    <a class="btn btn-outline-brand btn-lg" href="#how-it-works">How it works</a>
-  </div>
-</section>
+<div class="first-screen">
+  <section class="hero">
+    <p class="hero-pill"><span class="mx-2 text-muted"></span> Free on-site inspection available</p>
+    <h1>Fire protection,<br>priced for your <span class="highlight">site</span></h1>
+    <p class="lead">Fire extinguishers, kitchen hood suppression and fire alarm systems. Tell us what you need and receive an official quotation by email.</p>
+    <div class="d-flex justify-content-center gap-2 flex-wrap">
+      <a class="btn btn-brand btn-lg" href="{{ url_for('auth.register') }}">Request a Quote</a>
+      <a class="btn btn-outline-brand btn-lg" href="#how-it-works">How it works</a>
+    </div>
+    <a class="scroll-cue" href="#how-it-works" aria-label="Scroll down to see how it works">
+      <span>Scroll</span>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+    </a>
+  </section>
+
+  <section class="trust-bar" aria-label="Accreditations and registrations">
+    <ul class="trust-list">
+      <li><span class="trust-check" aria-hidden="true">✓</span>BFP accredited installer &amp; distributor</li>
+      <li><span class="trust-check" aria-hidden="true">✓</span>ISO-aligned QMS (ISO 9001)</li>
+      <li><span class="trust-check" aria-hidden="true">✓</span>DTI registered</li>
+      <li><span class="trust-check" aria-hidden="true">✓</span>BIR registered</li>
+      <li><span class="trust-check" aria-hidden="true">✓</span>PhilGEPS accredited</li>
+    </ul>
+  </section>
+</div>
 
 <section id="how-it-works" class="py-5">
   <h2 class="text-center fw-bold mb-4">How it works</h2>
