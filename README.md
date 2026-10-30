@@ -8,7 +8,7 @@ A Flask web application where clients browse fire protection products and servic
 
 1. **Clone and enter the project**
    ```powershell
-   git clone <your-repo-url>
+   git clone https://github.com/kodzuken1021/fire-quotation.git
    cd fire-quotation
    ```
 2. **Create and activate a virtual environment**

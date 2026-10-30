@@ -1,4 +1,5 @@
-from datetime import date
+from datetime import date, datetime
+
 from ..db import get_db
 
 STATUSES = ("Pending", "Inspection Scheduled", "Quote Sent", "Cancelled")
@@ -36,12 +37,12 @@ class QuoteRequest:
     def created_at(self): return self._created_at
 
     @property
+    def inspection_date(self): return self._inspection_date
+
+    @property
     def items(self):
         """Read-only copy: list of (item_id, quantity)."""
         return list(self._items.items())
-
-    @property
-    def inspection_date(self): return self._inspection_date
 
     # ---- business rules ----
     def add_item(self, item_id, quantity):
@@ -78,6 +79,8 @@ class QuoteRequest:
         self.notes = notes or ""
         self.inspection_address = inspection_address if self.wants_inspection else None
         self.preferred_date = preferred_date if self.wants_inspection else None
+        if not self.wants_inspection:
+            self._inspection_date = None
 
     def clear_items(self):
         if not self.can_be_edited():
@@ -99,8 +102,15 @@ class QuoteRequest:
         for row in rows:
             row["quantity"] = self._items[row["id"]]
         return rows
+
     def schedule_inspection(self, when):
         """Admin sets the free inspection date and the status becomes Inspection Scheduled."""
+        if self._id is None:
+            raise ValueError("Save the request first.")
+        if isinstance(when, datetime):
+            when = when.date()
+        if not isinstance(when, date):
+            raise ValueError("Choose a valid inspection date.")
         if not self.wants_inspection:
             raise ValueError("This request did not ask for an inspection.")
         if self._status not in ("Pending", "Inspection Scheduled"):
@@ -189,7 +199,6 @@ class QuoteRequest:
                            row["wants_inspection"], row["notes"], row["status"], row["id"], row["created_at"],
                            row.get("inspection_address"), row.get("preferred_inspection_date"),
                            inspection_date=row.get("inspection_date"))
-
         with get_db().cursor() as cur:
             cur.execute("SELECT item_id, quantity FROM quote_request_items WHERE request_id = %s", (row["id"],))
             for r in cur.fetchall():
@@ -217,6 +226,7 @@ class QuoteRequest:
 
     @staticmethod
     def status_counts():
+        """{status: number of requests}, for the admin dashboard."""
         counts = {s: 0 for s in STATUSES}
         with get_db().cursor() as cur:
             cur.execute("SELECT status, COUNT(*) AS n FROM quote_requests GROUP BY status")
