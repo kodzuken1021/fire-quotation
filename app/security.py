@@ -38,5 +38,14 @@ class LoginThrottle:
     def reset(self, key):
         self._fails.pop(key, None)
 
-
 login_throttle = LoginThrottle()
+
+def detect_image_type(data):
+    """Return 'png', 'jpg' or 'webp' from the file's first bytes, else None."""
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "png"
+    if data.startswith(b"\xff\xd8\xff"):
+        return "jpg"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "webp"
+    return None

@@ -30,6 +30,7 @@
       <button class="btn btn-brand btn-lg w-100" type="submit">Log in</button>
     </form>
     <p class="auth-switch">No account yet? <a href="{{ url_for('auth.register') }}">Register</a></p>
+    <p class="auth-switch mt-1 small">Admin? <a href="{{ url_for('auth.admin_login') }}">Log in here</a></p>
   </section>
 </div>
 {% endblock %}

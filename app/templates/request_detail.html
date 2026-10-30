@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Request #{{ req.id }}{% endblock %}
+{% block content %}
+<a class="small" href="{{ url_for('client.dashboard') }}">&larr; My Requests</a>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 my-2">
+  <h1 class="h3 fw-bold mb-0">Request #{{ req.id }}</h1>
+  <span class="status-badge status-{{ req.status|lower|replace(' ', '-') }}">{{ req.status }}</span>
+</div>
+
+<div class="bg-white border rounded-3 p-3 mb-3">
+  <h2 class="h6 fw-bold">Items</h2>
+  {% if details %}
+  <ul class="list-group list-group-flush">
+    {% for d in details %}
+    <li class="list-group-item d-flex justify-content-between">
+      <span>{{ d.name }} <small class="text-muted">({{ d.category }})</small></span>
+      <strong>x {{ d.quantity }}</strong>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="mb-0 text-muted">No items are associated with this request.</p>
+  {% endif %}
+</div>
+
+<div class="bg-white border rounded-3 p-3 mb-3">
+  <p class="mb-1"><strong>Installation needed:</strong> {{ 'Yes' if req.needs_installation else 'No' }}</p>
+  <p class="mb-1"><strong>Testing needed:</strong> {{ 'Yes' if req.needs_testing else 'No' }}</p>
+  <p class="mb-1"><strong>Free on-site inspection:</strong> {{ 'Requested' if req.wants_inspection else 'No' }}</p>
+  {% if req.wants_inspection %}
+  <p class="mb-1"><strong>Inspection address:</strong> {{ req.inspection_address or '-' }}</p>
+  <p class="mb-1"><strong>Preferred date:</strong> {{ req.preferred_date.strftime('%b %d, %Y') if req.preferred_date else 'No preference' }}</p>
+  {% endif %}
+  <p class="mb-0"><strong>Notes:</strong> {{ req.notes or '-' }}</p>
+</div>
+
+{% if req.can_be_edited() %}
+<a class="btn btn-outline-brand" href="{{ url_for('client.edit_request', request_id=req.id) }}">Edit request</a>
+<form class="d-inline" method="post" action="{{ url_for('client.cancel_request', request_id=req.id) }}"
+      data-confirm="Cancel this request? This cannot be undone.">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <button class="btn btn-brand" type="submit">Cancel request</button>
+</form>
+{% endif %}
+{% endblock %}

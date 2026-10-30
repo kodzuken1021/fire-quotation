@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Admin dashboard{% endblock %}
+{% block content %}
+<h1 class="h3 fw-bold mb-3">Admin dashboard</h1>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3"><div class="stat-card"><div class="stat-num">{{ counts.values()|sum }}</div>Total</div></div>
+  <div class="col-6 col-lg-3"><div class="stat-card"><div class="stat-num">{{ counts['Pending'] }}</div>Pending</div></div>
+  <div class="col-6 col-lg-3"><div class="stat-card"><div class="stat-num">{{ counts['Inspection Scheduled'] }}</div>Inspection scheduled</div></div>
+  <div class="col-6 col-lg-3"><div class="stat-card"><div class="stat-num">{{ counts['Quote Sent'] }}</div>Quote sent</div></div>
+</div>
+
+<div class="chip-row mb-3">
+  <a class="chip{% if not status %} active{% endif %}" href="{{ url_for('admin.dashboard') }}">All <span>{{ counts.values()|sum }}</span></a>
+  {% for s in statuses %}
+    <a class="chip{% if status == s %} active{% endif %}" href="{{ url_for('admin.dashboard', status=s) }}">{{ s }} <span>{{ counts[s] }}</span></a>
+  {% endfor %}
+</div>
+
+{% if not rows %}
+  <div class="catalog-empty"><h2 class="h5 fw-bold">No requests found</h2><p class="text-muted mb-0">Nothing matches this filter yet.</p></div>
+{% else %}
+<div class="table-responsive bg-white border rounded-3">
+  <table class="table align-middle mb-0">
+    <thead><tr><th>#</th><th>Client</th><th>Submitted</th><th>Items</th><th>Inspection</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
+    <tbody>
+    {% for r, c in rows %}
+      <tr>
+        <td>{{ r.id }}</td>
+        <td>{{ c.name }}<br><small class="text-muted">{{ c.company or '' }}</small></td>
+        <td>{{ r.created_at.strftime('%b %d, %Y') if r.created_at else '' }}</td>
+        <td>{{ r.items|length }}</td>
+        <td>{{ 'Requested' if r.wants_inspection else '-' }}</td>
+        <td><span class="status-badge status-{{ r.status|lower|replace(' ', '-') }}">{{ r.status }}</span></td>
+        <td class="text-end text-nowrap">
+          <a class="btn btn-sm btn-outline-brand" href="{{ url_for('admin.request_detail', request_id=r.id) }}">View</a>
+          <form class="d-inline" method="post" action="{{ url_for('admin.delete_request', request_id=r.id) }}"
+                data-confirm="Permanently delete request #{{ r.id }}? This cannot be undone.">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-sm btn-brand" type="submit">Delete</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

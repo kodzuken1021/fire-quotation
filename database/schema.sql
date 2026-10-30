@@ -31,18 +31,24 @@ CREATE TABLE IF NOT EXISTS catalog_items (
 
 -- One quote request per submission by a client
 CREATE TABLE IF NOT EXISTS quote_requests (
-  id                 INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  user_id            INT UNSIGNED NOT NULL,
-  status             ENUM('Pending','Inspection Scheduled','Quote Sent','Cancelled')
-                     NOT NULL DEFAULT 'Pending',
-  needs_installation TINYINT(1) NOT NULL DEFAULT 0,
-  needs_testing      TINYINT(1) NOT NULL DEFAULT 0,
-  wants_inspection   TINYINT(1) NOT NULL DEFAULT 0,
-  notes              TEXT NULL,
-  created_at         TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at         TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  id                         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id                    INT UNSIGNED NOT NULL,
+  status                     ENUM('Pending','Inspection Scheduled','Quote Sent','Cancelled')
+                             NOT NULL DEFAULT 'Pending',
+  needs_installation         TINYINT(1) NOT NULL DEFAULT 0,
+  needs_testing              TINYINT(1) NOT NULL DEFAULT 0,
+  wants_inspection           TINYINT(1) NOT NULL DEFAULT 0,
+  inspection_address         VARCHAR(255) NULL,
+  preferred_inspection_date  DATE NULL,
+  notes                      TEXT NULL,
+  created_at                 TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at                 TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_qr_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
+
+ALTER TABLE quote_requests
+  ADD COLUMN IF NOT EXISTS inspection_address VARCHAR(255) NULL AFTER wants_inspection,
+  ADD COLUMN IF NOT EXISTS preferred_inspection_date DATE NULL AFTER inspection_address;
 
 -- Items the client selected on the request form
 CREATE TABLE IF NOT EXISTS quote_request_items (
@@ -96,7 +102,6 @@ CREATE TABLE IF NOT EXISTS quotation_items (
 ) ENGINE=InnoDB;
 
 -- Catalog data. Extinguisher types and the kitchen hood system come from the client's product list.
--- The FDAS and Service rows are still SAMPLES: replace them with the client's real offerings.
 INSERT IGNORE INTO catalog_items (name, category, description) VALUES
  ('Dry Chemical (ABC) Extinguisher - 2.2 lbs / 1 kg', 'Extinguisher', 'Compact option for suitable applications and limited spaces.'),
  ('Dry Chemical (ABC) Extinguisher - 5 lbs / 2.3 kg', 'Extinguisher', 'Suitable for light motor vehicles and other appropriate applications.'),
@@ -105,9 +110,26 @@ INSERT IGNORE INTO catalog_items (name, category, description) VALUES
  ('Dry Chemical (ABC) Extinguisher - 50 lbs (Wheeled)', 'Extinguisher', 'Wheeled unit for larger fire risks and greater extinguishing capacity.'),
  ('Foam Type (AFFF) Extinguisher - 20 lbs / 9.1 kg', 'Extinguisher', 'Suitable for specific applications involving flammable liquids and other compatible fire risks.'),
  ('Foam Type (AFFF) Extinguisher - 50 lbs (Wheeled)', 'Extinguisher', 'A wheeled foam extinguisher designed for larger fire risks involving compatible flammable liquids and other suitable applications.'),
- ('Kitchen Hood Fire Suppression System', 'Suppression System', 'Fire protection designed for commercial kitchens. Protect your cooking equipment, kitchen hood, and surrounding areas with a professionally designed kitchen hood suppression system.'),
- ('Conventional Fire Detection and Alarm System (FDAS)', 'FDAS', 'Zone-based detection and alarm system for small to medium buildings.'),
- ('Addressable Fire Detection and Alarm System (FDAS)', 'FDAS', 'Device-level detection and alarm system for larger buildings.'),
+ ('Kitchen Hood Fire Suppression System', 'Suppression System', 'Fire protection designed for commercial kitchens. Protect your cooking equipment, kitchen hood, and surrounding areas with a professionally designed kitchen hood suppression system.');
+
+DELETE c1 FROM catalog_items c1
+JOIN catalog_items c2
+  ON c1.name = c2.name AND c1.category = c2.category AND c1.id > c2.id;
+ALTER TABLE catalog_items ADD UNIQUE KEY uq_item (category, name);
+
+DELETE FROM catalog_items WHERE category = 'FDAS';
+INSERT INTO catalog_items (name, category, description, is_active) VALUES
+('Conventional FDAS', 'FDAS', 'Zone-based fire detection and alarm system for small to mid-size buildings.', 1),
+('Addressable FDAS', 'FDAS', 'Every device reports its own address, so you see exactly where an alarm started.', 1),
+('Semi-Addressable FDAS', 'FDAS', 'Mix of zone-based and addressable devices for mid-size sites.', 1),
+('Smoke Detector', 'FDAS', 'Detects smoke particles early.', 1),
+('Heat Detector', 'FDAS', 'Detects a rise in temperature; suited to kitchens and dusty areas.', 1),
+('Beam Detector', 'FDAS', 'Detects smoke across large open spaces such as warehouses.', 1),
+('Strobe Horn', 'FDAS', 'Audible and visual alarm notification device.', 1),
+('Mechanical Bell', 'FDAS', 'Loud audible alarm bell.', 1),
+('Manual Call Point', 'FDAS', 'Break-glass station to trigger the alarm by hand.', 1);
+
+INSERT IGNORE INTO catalog_items (name, category, description) VALUES
  ('Fire Extinguisher Inspection', 'Service', 'On-site inspection of extinguishers.'),
  ('Fire Extinguisher Maintenance and Refilling', 'Service', 'Servicing, refilling and recharging of extinguishers.'),
  ('Fire Alarm System Maintenance', 'Service', 'Periodic testing and maintenance of fire alarm systems.');

@@ -45,6 +45,7 @@ def create_app(config_class=Config):
         (404, "We could not find that page."),
         (405, "That action is not allowed here."),
         (500, "Something went wrong on our side. Please try again."),
+        (413, "That file is too large. The maximum size is 2 MB."),
     ):
         app.register_error_handler(
             code,

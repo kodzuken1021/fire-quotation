@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}My profile{% endblock %}
+
+{% macro field(name, label, value="", error="", type="text", autocomplete="", toggle=false) %}
+<div class="form-floating mb-3">
+  <input class="form-control{% if toggle %} has-toggle{% endif %}{% if error %} is-invalid{% endif %}"
+         id="{{ name }}" name="{{ name }}" type="{{ type }}" value="{{ value }}"
+         placeholder="{{ label }}" autocomplete="{{ autocomplete }}" required>
+  <label for="{{ name }}">{{ label }}</label>
+  {% if toggle %}<button type="button" class="pw-toggle" data-target="{{ name }}" aria-label="Show password" aria-pressed="false">{% include "_eye_icons.html" %}</button>{% endif %}
+  <div class="invalid-feedback" id="{{ name }}-error">{{ error }}</div>
+</div>
+{% endmacro %}
+
+{% block content %}
+<h1 class="h3 fw-bold mb-3">My profile</h1>
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="quote-card text-center">
+      {% if user.profile_photo %}
+        <img class="avatar" src="{{ url_for('static', filename='uploads/' ~ user.profile_photo) }}" alt="Your profile photo">
+      {% else %}
+        <div class="avatar avatar-initial" aria-hidden="true">{{ user.full_name[:1]|upper }}</div>
+      {% endif %}
+      <h2 class="h6 fw-bold mt-3 mb-0">{{ user.full_name }}</h2>
+      <p class="text-muted small">{{ user.role|capitalize }}</p>
+
+      <form method="post" action="{{ url_for('auth.update_photo') }}" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input class="form-control form-control-sm mb-2" type="file" name="photo" data-max-mb="2"
+               accept="image/png,image/jpeg,image/webp" aria-label="Choose a profile photo" required>
+        <button class="btn btn-brand btn-sm w-100" type="submit">Upload photo</button>
+      </form>
+      {% if user.profile_photo %}
+      <form class="mt-2" method="post" action="{{ url_for('auth.remove_photo') }}" data-confirm="Remove your profile photo?">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-outline-brand btn-sm w-100" type="submit">Remove photo</button>
+      </form>
+      {% endif %}
+      <p class="quote-note mt-2 mb-0">PNG, JPG or WEBP, up to 2 MB.</p>
+    </div>
+  </div>
+
+  <div class="col-lg-8">
+    <div class="quote-card mb-4">
+      <h2 class="h6 fw-bold mb-3">Account details</h2>
+      <form class="auth-form" method="post" action="{{ url_for('auth.profile') }}" data-form="profile" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {{ field("full_name", "Full name", form.get("full_name", ""), errors.get("full_name", ""), autocomplete="name") }}
+        {{ field("email", "Email", form.get("email", ""), errors.get("email", ""), "email", "email") }}
+        {{ field("contact_number", "Contact number (09XXXXXXXXX)", form.get("contact_number", ""), errors.get("contact_number", ""), "tel", "tel") }}
+        {% if user.role == 'client' %}
+          {{ field("company_name", "Company name", form.get("company_name", ""), errors.get("company_name", ""), autocomplete="organization") }}
+        {% endif %}
+        <button class="btn btn-brand" type="submit">Save changes</button>
+      </form>
+    </div>
+
+    <div class="quote-card">
+      <h2 class="h6 fw-bold mb-3">Change password</h2>
+      <form class="auth-form" method="post" action="{{ url_for('auth.change_password') }}" data-form="password" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {{ field("old_password", "Current password", "", pw_errors.get("old_password", ""), "password", "current-password", true) }}
+        {{ field("new_password", "New password (min 8, 1 number)", "", pw_errors.get("new_password", ""), "password", "new-password", true) }}
+        {{ field("confirm_password", "Confirm new password", "", pw_errors.get("confirm_password", ""), "password", "new-password", true) }}
+        <button class="btn btn-brand" type="submit">Change password</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}<script src="{{ url_for('static', filename='js/validation.js') }}"></script>{% endblock %}

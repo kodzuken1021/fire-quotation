@@ -38,9 +38,8 @@
           <span class="cat-tag cat-{{ item.category|lower|replace(' ', '-') }}">{{ item.category }}</span>
           <h3 class="catalog-card-title">{{ item.name }}</h3>
           <p class="catalog-card-text">{{ item.description }}</p>
-          {# Day 6: link this button to the quote request form with this item selected #}
           <a class="btn btn-brand btn-sm"
-             href="{{ url_for('client.dashboard') if session.get('user_id') else url_for('auth.register') }}">Request a quote</a>
+             href="{{ url_for('client.new_request', item=item.id) if session.get('role') == 'client' else (url_for('admin.dashboard') if session.get('user_id') else url_for('auth.register')) }}">Request a quote</a>
         </article>
       </div>
       {% endfor %}

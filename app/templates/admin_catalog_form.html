@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit item' if item else 'Add item' }}{% endblock %}
+{% block content %}
+<a class="small" href="{{ url_for('admin.catalog_list') }}">&larr; Manage catalog</a>
+<h1 class="h3 fw-bold my-2">{{ 'Edit item' if item else 'Add item' }}</h1>
+
+<form class="quote-card" method="post" style="max-width: 640px;">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <div class="mb-3">
+    <label class="form-label" for="name">Name</label>
+    <input class="form-control{% if errors.get('name') %} is-invalid{% endif %}" id="name" name="name" type="text"
+           minlength="2" maxlength="150" value="{{ form.get('name', '') }}" required>
+    <div class="invalid-feedback">{{ errors.get('name', '') }}</div>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label" for="category">Category</label>
+    <select class="form-select{% if errors.get('category') %} is-invalid{% endif %}" id="category" name="category" required>
+      <option value="">Choose…</option>
+      {% for c in categories %}<option value="{{ c }}" {% if form.get('category') == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
+    </select>
+    <div class="invalid-feedback">{{ errors.get('category', '') }}</div>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label" for="description">Description</label>
+    <textarea class="form-control{% if errors.get('description') %} is-invalid{% endif %}" id="description" name="description"
+              rows="4" maxlength="500">{{ form.get('description', '') }}</textarea>
+    <div class="invalid-feedback">{{ errors.get('description', '') }}</div>
+    <div class="form-text">Do not include prices. Prices appear only in the quotation.</div>
+  </div>
+
+  <div class="inspect-toggle mb-4">
+    <input class="form-check-input" type="checkbox" id="is_active" name="is_active" value="1" {% if form.get('is_active') %}checked{% endif %}>
+    <label class="form-check-label" for="is_active">Visible in the public catalog</label>
+  </div>
+
+  <div class="d-flex gap-2">
+    <button class="btn btn-brand" type="submit">{{ 'Save changes' if item else 'Add item' }}</button>
+    <a class="btn btn-outline-brand" href="{{ url_for('admin.catalog_list') }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

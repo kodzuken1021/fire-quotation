@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit request' if editing else 'New quote request' }}{% endblock %}
+
+{% block content %}
+<div class="request-header">
+  <h1>{{ 'Edit request #' ~ req.id if editing else 'New quote request' }}</h1>
+  <p>Select the products and services you need. We’ll review your request and follow up by email.</p>
+</div>
+
+<form id="quote-form" method="post" novalidate>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <div class="quote-card">
+    <section class="quote-section">
+      <h2>Select products or services</h2>
+      <div class="quote-checklist">
+        {% for category, items in groups %}
+          {% if items %}
+            <div class="mb-2">
+              <div class="fw-bold text-uppercase small text-muted mb-2">{{ category }}</div>
+              {% for item in items %}
+                <div class="pick-row{% if item.id|string in selected %} is-on{% endif %}">
+                  <label class="pick-label" for="item_{{ item.id }}">
+                    <input class="form-check-input pick-check" type="checkbox" id="item_{{ item.id }}" name="items" value="{{ item.id }}"
+                      {% if item.id|string in selected %}checked{% endif %}>
+                    <span>
+                      <span class="fw-semibold d-block">{{ item.name }}</span>
+                      <span class="text-muted small">{{ item.description }}</span>
+                    </span>
+                  </label>
+
+                  <input class="form-control pick-qty{% if errors.get('items') and item.id|string in selected %} is-invalid{% endif %}"
+                         name="qty_{{ item.id }}" min="1" max="999" step="1"
+                         value="{{ qtys.get(item.id|string, '') }}" {% if item.id|string not in selected %}disabled{% endif %}>
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      <div class="invalid-feedback d-block" id="items-error">{{ errors.get('items', '') }}</div>
+    </section>
+
+    <section class="quote-section">
+      <h2>Project details</h2>
+
+      <div class="mb-3">
+        <div class="inspect-toggle">
+          <input class="form-check-input" type="checkbox" id="needs_installation" name="needs_installation" value="1"
+            {% if flags.get('needs_installation') %}checked{% endif %}>
+          <label class="form-check-label" for="needs_installation">I need installation</label>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <div class="inspect-toggle">
+          <input class="form-check-input" type="checkbox" id="needs_testing" name="needs_testing" value="1"
+            {% if flags.get('needs_testing') %}checked{% endif %}>
+          <label class="form-check-label" for="needs_testing">I need testing</label>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <div class="inspect-toggle">
+          <input class="form-check-input" type="checkbox" id="wants_inspection" name="wants_inspection" value="1"
+            {% if flags.get('wants_inspection') %}checked{% endif %}>
+          <label class="form-check-label" for="wants_inspection">I want a free on-site inspection</label>
+        </div>
+      </div>
+
+      <div id="inspection-fields" class="{% if not flags.get('wants_inspection') %}d-none{% endif %}">
+        <div class="mb-3">
+          <label class="form-label" for="inspection_address">Inspection address</label>
+          <input class="form-control{% if errors.get('inspection_address') %} is-invalid{% endif %}" id="inspection_address" name="inspection_address"
+                 type="text" maxlength="255" value="{{ form.get('inspection_address', '') }}">
+          <div class="invalid-feedback" id="inspection_address-error">{{ errors.get('inspection_address', '') }}</div>
+          <div class="form-text">We’ll confirm the exact visit details by email.</div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label" for="preferred_date">Preferred date</label>
+          <input class="form-control{% if errors.get('preferred_date') %} is-invalid{% endif %}" id="preferred_date" name="preferred_date"
+                 type="date" min="{{ today }}" value="{{ form.get('preferred_date', '') }}">
+          <div class="invalid-feedback" id="preferred_date-error">{{ errors.get('preferred_date', '') }}</div>
+          <div class="form-text">We confirm the final schedule by email.</div>
+        </div>
+      </div>
+
+      <label class="form-label" for="notes">Notes (optional)</label>
+      <textarea class="form-control{% if errors.get('notes') %} is-invalid{% endif %}" id="notes" name="notes" rows="3" maxlength="500">{{ notes }}</textarea>
+      <div class="invalid-feedback">{{ errors.get('notes', '') }}</div>
+    </section>
+
+    <div class="d-flex gap-2 mt-4 mb-2">
+      <button class="btn btn-brand btn-lg" type="submit">{{ 'Save changes' if editing else 'Submit request' }}</button>
+      <a class="btn btn-outline-brand btn-lg" href="{{ url_for('client.dashboard') }}">Back</a>
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}<script src="{{ url_for('static', filename='js/request_form.js') }}"></script>{% endblock %}

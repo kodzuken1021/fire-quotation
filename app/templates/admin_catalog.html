@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Manage catalog{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    <h1 class="h3 fw-bold mb-0">Manage catalog</h1>
+    <p class="text-muted mb-0">Hidden items are removed from the public catalog and the quote form.</p>
+  </div>
+  <a class="btn btn-brand" href="{{ url_for('admin.catalog_new') }}">Add item</a>
+</div>
+
+<form class="row g-2 mb-3" method="get" action="{{ url_for('admin.catalog_list') }}">
+  <div class="col-md-4"><input class="form-control" type="search" name="q" value="{{ q }}" maxlength="60" placeholder="Search name or description" aria-label="Search"></div>
+  <div class="col-6 col-md-3">
+    <select class="form-select" name="category" aria-label="Category">
+      <option value="">All categories</option>
+      {% for c in categories %}<option value="{{ c }}" {% if c == category %}selected{% endif %}>{{ c }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="col-6 col-md-3">
+    <select class="form-select" name="status" aria-label="Status">
+      <option value="all" {% if status == 'all' %}selected{% endif %}>All items</option>
+      <option value="active" {% if status == 'active' %}selected{% endif %}>Visible only</option>
+      <option value="hidden" {% if status == 'hidden' %}selected{% endif %}>Hidden only</option>
+    </select>
+  </div>
+  <div class="col-md-2"><button class="btn btn-outline-brand w-100" type="submit">Filter</button></div>
+</form>
+
+{% if not items %}
+  <div class="catalog-empty"><h2 class="h5 fw-bold">No items found</h2><p class="text-muted mb-0">Try different filters or add a new item.</p></div>
+{% else %}
+<div class="table-responsive bg-white border rounded-3">
+  <table class="table align-middle mb-0">
+    <thead><tr><th>Name</th><th>Category</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
+    <tbody>
+    {% for item in items %}
+      <tr>
+        <td>{{ item.name }}</td>
+        <td><span class="cat-tag cat-{{ item.category|lower|replace(' ', '-') }}">{{ item.category }}</span></td>
+        <td>
+          {% if item.is_active %}<span class="status-badge status-quote-sent">Visible</span>
+          {% else %}<span class="status-badge status-cancelled">Hidden</span>{% endif %}
+        </td>
+        <td class="text-end text-nowrap">
+          <a class="btn btn-sm btn-outline-brand" href="{{ url_for('admin.catalog_edit', item_id=item.id) }}">Edit</a>
+          <form class="d-inline" method="post" action="{{ url_for('admin.catalog_toggle', item_id=item.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-sm btn-outline-brand" type="submit">{{ 'Hide' if item.is_active else 'Show' }}</button>
+          </form>
+          {% if item.id not in used %}
+          <form class="d-inline" method="post" action="{{ url_for('admin.catalog_delete', item_id=item.id) }}"
+                data-confirm="Permanently delete this item? This cannot be undone.">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-sm btn-brand" type="submit">Delete</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="quote-note mt-2">Items already used in a request can only be hidden, so old requests keep their history.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Admin log in{% endblock %}
+{% block main_class %}auth-main{% endblock %}
+{% block flashes %}{% endblock %}
+
+{% block content %}
+<div class="auth-card auth-card--sm">
+  {% with aside_lead="Staff", aside_hl="access.", aside_text="Review quote requests, schedule inspections and send quotations." %}
+  {% include "_auth_aside.html" %}
+  {% endwith %}
+  <section class="auth-panel">
+    {% include "_flashes.html" %}
+    <h1 class="auth-title">Admin log in</h1>
+    <p class="auth-sub">For authorized staff only.</p>
+
+    <form class="auth-form" method="post" action="{{ url_for('auth.admin_login') }}" data-form="login" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-floating mb-3">
+        <input class="form-control" id="email" name="email" type="email" value="{{ email }}" placeholder="Email" autocomplete="email" required>
+        <label for="email">Email</label>
+        <div class="invalid-feedback" id="email-error"></div>
+      </div>
+      <div class="form-floating mb-4">
+        <input class="form-control has-toggle" id="password" name="password" type="password" placeholder="Password" autocomplete="current-password" required>
+        <label for="password">Password</label>
+        <button type="button" class="pw-toggle" data-target="password" aria-label="Show password" aria-pressed="false">{% include "_eye_icons.html" %}</button>
+        <div class="invalid-feedback" id="password-error"></div>
+      </div>
+      <button class="btn btn-brand btn-lg w-100" type="submit">Log in</button>
+    </form>
+    <p class="auth-switch">Not staff? <a href="{{ url_for('auth.login') }}">Client log in</a></p>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}<script src="{{ url_for('static', filename='js/validation.js') }}"></script>{% endblock %}

@@ -49,6 +49,19 @@
     login: {
       email: v => EMAIL_RE.test(v) ? "" : "Enter a valid email address.",
       password: v => v ? "" : "Enter your password."
+    },
+        profile: {
+      full_name: v => v.length >= 2 && v.length <= 41 && /^[A-Za-z'-]+(?: [A-Za-z'-]+)*$/.test(v) ? "" : "Full name must be 2 to 41 letters (spaces, apostrophes and hyphens allowed).",
+      email: registerEmail,
+      contact_number: v => !PHONE_RE.test(v) ? "Enter an 11-digit mobile number starting with 09 (example: 09171234567)."
+        : /(\d)\1{3,}/.test(v) ? "The number cannot repeat the same digit 4 or more times in a row." : "",
+      company_name: v => COMPANY_RE.test(v) ? "" : "Company name must be 2 to 100 characters (letters, numbers and . , & ' ( ) - only)."
+    },
+    password: {
+      old_password: v => v ? "" : "Enter your current password.",
+      new_password: (v, form) => v.length < 8 || !/\d/.test(v) ? "Password must be at least 8 characters and include a number."
+        : v === form.elements.old_password.value ? "The new password must be different from the current one." : "",
+      confirm_password: (v, form) => v === form.elements.new_password.value ? "" : "Passwords do not match."
     }
   };
 
@@ -122,7 +135,7 @@
 
       input.addEventListener("input", () => {
         if (input.classList.contains("is-invalid") || input.classList.contains("is-valid")) check(input, form, rules);
-        if (input.name === "password" && form.elements.confirm_password && form.elements.confirm_password.value)
+        if ((input.name === "password" || input.name === "new_password") && form.elements.confirm_password && form.elements.confirm_password.value)
           check(form.elements.confirm_password, form, rules);
       });
       input.addEventListener("blur", () => {

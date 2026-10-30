@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}My Requests{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    <h1 class="h3 fw-bold mb-0">My Requests</h1>
+    <p class="text-muted mb-0">Welcome, {{ session.get('name') }}.</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a class="btn btn-outline-brand" href="{{ url_for('main.catalog') }}">Browse catalog</a>
+    <a class="btn btn-brand" href="{{ url_for('client.new_request') }}">New quote request</a>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3"><div class="stat-card"><div class="stat-num">{{ requests|length }}</div>Total</div></div>
+  <div class="col-6 col-lg-3"><div class="stat-card"><div class="stat-num">{{ counts['Pending'] }}</div>Pending</div></div>
+  <div class="col-6 col-lg-3"><div class="stat-card"><div class="stat-num">{{ counts['Inspection Scheduled'] }}</div>Inspection scheduled</div></div>
+  <div class="col-6 col-lg-3"><div class="stat-card"><div class="stat-num">{{ counts['Quote Sent'] }}</div>Quote sent</div></div>
+</div>
+
+{% if not requests %}
+  <div class="catalog-empty">
+    <h2 class="h5 fw-bold">No requests yet</h2>
+    <p class="text-muted mb-3">Pick what you need and we will send you a quotation.</p>
+    <a class="btn btn-brand" href="{{ url_for('client.new_request') }}">Request a quote</a>
+  </div>
+{% else %}
+<div class="table-responsive bg-white border rounded-3">
+  <table class="table align-middle mb-0">
+    <thead><tr><th>#</th><th>Submitted</th><th>Items</th><th>Inspection</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
+    <tbody>
+    {% for r in requests %}
+      <tr>
+        <td>{{ r.id }}</td>
+        <td>{{ r.created_at.strftime('%b %d, %Y') if r.created_at else '' }}</td>
+        <td>{{ r.items|length }}</td>
+        <td>{{ 'Requested' if r.wants_inspection else '-' }}</td>
+        <td><span class="status-badge status-{{ r.status|lower|replace(' ', '-') }}">{{ r.status }}</span></td>
+        <td class="text-end text-nowrap">
+          <a class="btn btn-sm btn-outline-brand" href="{{ url_for('client.request_detail', request_id=r.id) }}">View</a>
+          {% if r.can_be_edited() %}
+          <a class="btn btn-sm btn-outline-brand" href="{{ url_for('client.edit_request', request_id=r.id) }}">Edit</a>
+          <form class="d-inline" method="post" action="{{ url_for('client.cancel_request', request_id=r.id) }}"
+                data-confirm="Cancel this request? This cannot be undone.">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-sm btn-brand" type="submit">Cancel</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

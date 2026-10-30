@@ -4,7 +4,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from ..db import get_db
 
-_SELECT = "SELECT id, full_name, email, password_hash, role, company_name, contact_number FROM users "
+_SELECT = "SELECT id, full_name, email, password_hash, role, company_name, contact_number, profile_photo FROM users "
 # Used so a login for an unknown email takes as long as one for a real email
 _DUMMY_HASH = generate_password_hash("not-a-real-password")
 
@@ -17,13 +17,14 @@ class User(ABC):
     """
 
     def __init__(self, full_name, email, company_name=None, contact_number=None,
-                 password_hash=None, id=None):
+                 password_hash=None, id=None, profile_photo=None):
         self._id = id
         self._full_name = full_name
         self._email = email
         self._company_name = company_name
         self._contact_number = contact_number
         self._password_hash = password_hash
+        self._profile_photo = profile_photo
 
     # ---- read-only properties ----
     @property
@@ -40,6 +41,9 @@ class User(ABC):
 
     @property
     def contact_number(self): return self._contact_number
+
+    @property
+    def profile_photo(self): return self._profile_photo
 
     # ---- each subclass must define these (abstraction / polymorphism) ----
     @property
@@ -90,7 +94,7 @@ class User(ABC):
             return None
         cls = _ROLE_CLASSES[row["role"]]
         return cls(row["full_name"], row["email"], row["company_name"],
-                   row["contact_number"], row["password_hash"], row["id"])
+                   row["contact_number"], row["password_hash"], row["id"], row["profile_photo"])
 
     @staticmethod
     def find_by_email(email):
@@ -110,6 +114,43 @@ class User(ABC):
             cur.execute("SELECT 1 FROM users WHERE email = %s", (email,))
             return cur.fetchone() is not None
 
+        # ---- profile updates ----
+    @staticmethod
+    def _run_update(sql, params):
+        conn = get_db()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(sql, params)
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+
+    def update_profile(self, full_name, email, company_name, contact_number):
+        if self._id is None:
+            raise ValueError("Save the user first.")
+        self._run_update(
+            "UPDATE users SET full_name=%s, email=%s, company_name=%s, contact_number=%s WHERE id=%s",
+            (full_name, email, company_name, contact_number, self._id))
+        self._full_name, self._email = full_name, email
+        self._company_name, self._contact_number = company_name, contact_number
+
+    def change_password(self, old_password, new_password):
+        if not self.verify_password(old_password):
+            raise ValueError("Current password is incorrect.")
+        new_hash = generate_password_hash(new_password)
+        self._run_update("UPDATE users SET password_hash=%s WHERE id=%s", (new_hash, self._id))
+        self._password_hash = new_hash
+
+    def set_profile_photo(self, filename):
+        self._run_update("UPDATE users SET profile_photo=%s WHERE id=%s", (filename, self._id))
+        self._profile_photo = filename
+
+    @staticmethod
+    def email_taken_by_other(email, user_id):
+        with get_db().cursor() as cur:
+            cur.execute("SELECT 1 FROM users WHERE email = %s AND id <> %s", (email, user_id))
+            return cur.fetchone() is not None
 
 class Client(User):
     """A customer who requests quotes."""

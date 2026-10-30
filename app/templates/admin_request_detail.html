@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Request #{{ req.id }}{% endblock %}
+{% block content %}
+<a class="small" href="{{ url_for('admin.dashboard') }}">&larr; Admin dashboard</a>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 my-2">
+  <h1 class="h3 fw-bold mb-0">Request #{{ req.id }}</h1>
+  <span class="status-badge status-{{ req.status|lower|replace(' ', '-') }}">{{ req.status }}</span>
+</div>
+
+<div class="bg-white border rounded-3 p-3 mb-3">
+  <h2 class="h6 fw-bold">Client</h2>
+  {% if client %}
+  <p class="mb-1"><strong>Name:</strong> {{ client.full_name }}</p>
+  <p class="mb-1"><strong>Company:</strong> {{ client.company_name or '-' }}</p>
+  <p class="mb-1"><strong>Email:</strong> {{ client.email }}</p>
+  <p class="mb-0"><strong>Contact:</strong> {{ client.contact_number or '-' }}</p>
+  {% else %}<p class="mb-0 text-muted">Client account not found.</p>{% endif %}
+</div>
+
+<div class="bg-white border rounded-3 p-3 mb-3">
+  <h2 class="h6 fw-bold">Items</h2>
+  <ul class="list-group list-group-flush">
+    {% for d in details %}
+    <li class="list-group-item d-flex justify-content-between">
+      <span>{{ d.name }} <small class="text-muted">({{ d.category }})</small></span><strong>x {{ d.quantity }}</strong>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+
+<div class="bg-white border rounded-3 p-3 mb-3">
+  <p class="mb-1"><strong>Installation needed:</strong> {{ 'Yes' if req.needs_installation else 'No' }}</p>
+  <p class="mb-1"><strong>Testing needed:</strong> {{ 'Yes' if req.needs_testing else 'No' }}</p>
+  <p class="mb-1"><strong>Free on-site inspection:</strong> {{ 'Requested' if req.wants_inspection else 'No' }}</p>
+  {% if req.wants_inspection %}
+  <p class="mb-1"><strong>Inspection address:</strong> {{ req.inspection_address or '-' }}</p>
+  <p class="mb-1"><strong>Preferred date:</strong> {{ req.preferred_date.strftime('%b %d, %Y') if req.preferred_date else 'No preference' }}</p>
+  {% endif %}
+  <p class="mb-0"><strong>Notes:</strong> {{ req.notes or '-' }}</p>
+</div>
+
+<div class="bg-white border rounded-3 p-3">
+  <h2 class="h6 fw-bold">Update status</h2>
+  <form class="d-flex flex-wrap gap-2 mb-3" method="post" action="{{ url_for('admin.update_status', request_id=req.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <select class="form-select w-auto" name="status" aria-label="Status">
+      {% for s in statuses %}<option value="{{ s }}" {% if s == req.status %}selected{% endif %}>{{ s }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-brand" type="submit">Save status</button>
+  </form>
+  <form method="post" action="{{ url_for('admin.delete_request', request_id=req.id) }}"
+        data-confirm="Permanently delete request #{{ req.id }}? This cannot be undone.">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-outline-brand" type="submit">Delete request</button>
+  </form>
+</div>
+{% endblock %}
