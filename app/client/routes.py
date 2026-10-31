@@ -1,10 +1,12 @@
 from datetime import date
 
+import os
 import pymysql
+from flask import current_app, send_file
 from flask import Blueprint, abort, flash, redirect, render_template, request, session, url_for
 from ..decorators import client_required
 from ..mailer import send_request_received
-from ..models import CATEGORIES, STATUSES, CatalogItem, QuoteRequest, User
+from ..models import CATEGORIES, STATUSES, CatalogItem, QuoteRequest, Quotation, User
 from ..validators import validate_quote_request
 
 client_bp = Blueprint("client", __name__)
@@ -97,13 +99,13 @@ def new_request():
                 )
                 for item_id, quantity in data["items"]:
                     quote_request.add_item(item_id, quantity)
-                    quote_request.save()
-                    user = User.find_by_id(session["user_id"])
-                    if user and send_request_received(user, quote_request):
-                        flash("Quote request submitted. A confirmation email is on its way.", "success")
-                    else:
-                        flash("Quote request submitted, but we could not send the confirmation email.", "warning")
-                    return redirect(url_for("client.request_detail", request_id=quote_request.id))
+                quote_request.save()
+                user = User.find_by_id(session["user_id"])
+                if user and send_request_received(user, quote_request):
+                    flash("Quote request submitted. A confirmation email is on its way.", "success")
+                else:
+                    flash("Quote request submitted, but we could not send the confirmation email.", "warning")
+                return redirect(url_for("client.dashboard"))
         else:
             preset = request.args.get("item", type=int)
             if preset in valid_ids:
@@ -127,10 +129,13 @@ def request_detail(request_id):
         if quote_request is None:
             abort(404)
         details = quote_request.item_details()
+        quotation = Quotation.find_by_request(request_id)
+        if quotation and not quotation.sent_at:      # drafts stay hidden from the client
+            quotation = None
     except pymysql.MySQLError:
         flash(DB_DOWN, "danger")
         return redirect(url_for("client.dashboard"))
-    return render_template("request_detail.html", req=quote_request, details=details)
+    return render_template("request_detail.html", req=quote_request, details=details, quotation=quotation)
 
 
 @client_bp.route("/requests/<int:request_id>/edit", methods=["GET", "POST"])
@@ -209,3 +214,22 @@ def cancel_request(request_id):
     except pymysql.MySQLError:
         flash(DB_DOWN, "danger")
     return redirect(url_for("client.dashboard"))
+
+@client_bp.route("/requests/<int:request_id>/quotation")
+@client_required
+def download_quotation(request_id):
+    try:
+        quote_request = QuoteRequest.find(request_id, session["user_id"])   # own requests only
+        if quote_request is None:
+            abort(404)
+        quotation = Quotation.find_by_request(request_id)
+    except pymysql.MySQLError:
+        flash(DB_DOWN, "danger")
+        return redirect(url_for("client.dashboard"))
+    if quotation is None or not quotation.sent_at or not quotation.pdf_path:
+        abort(404)
+    path = os.path.join(current_app.config["QUOTATION_FOLDER"], os.path.basename(quotation.pdf_path))
+    if not os.path.isfile(path):
+        flash("The quotation file is missing. Please contact us.", "warning")
+        return redirect(url_for("client.request_detail", request_id=request_id))
+    return send_file(path, mimetype="application/pdf", download_name=f"{quotation.quotation_no}.pdf")

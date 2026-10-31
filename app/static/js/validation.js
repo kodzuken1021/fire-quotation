@@ -25,6 +25,7 @@
   function registerEmail(v) {
     v = v.toLowerCase();
     if (!EMAIL_RE.test(v)) return "Enter a valid email address.";
+    if (v.length > 120) return "Email must be 120 characters or fewer.";
     const [local, domain] = v.split("@");
     if (local.length < 2) return "The part before @ must be at least 2 characters.";
     const fix = emailTypoFix(v);

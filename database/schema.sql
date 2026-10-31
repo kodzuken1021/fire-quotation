@@ -1,5 +1,5 @@
 -- Fire Protection Quotation and Inspection Request System
--- Works on XAMPP MariaDB / MySQL. Run the whole file once.
+-- Works on XAMPP MariaDB / MySQL. Safe to run more than once.
 -- PowerShell:  C:\xampp\mysql\bin\mysql.exe -u root < database\schema.sql
 
 CREATE DATABASE IF NOT EXISTS fire_quotation
@@ -26,10 +26,12 @@ CREATE TABLE IF NOT EXISTS catalog_items (
   category    ENUM('Extinguisher','FDAS','Suppression System','Service') NOT NULL,
   description TEXT NULL,
   is_active   TINYINT(1) NOT NULL DEFAULT 1,
-  created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_item_name_category (name, category)
 ) ENGINE=InnoDB;
 
--- One quote request per submission by a client
+-- One quote request per submission by a client.
+-- inspection_date is the date the admin confirms (date only, no time).
 CREATE TABLE IF NOT EXISTS quote_requests (
   id                         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   user_id                    INT UNSIGNED NOT NULL,
@@ -40,16 +42,12 @@ CREATE TABLE IF NOT EXISTS quote_requests (
   wants_inspection           TINYINT(1) NOT NULL DEFAULT 0,
   inspection_address         VARCHAR(255) NULL,
   preferred_inspection_date  DATE NULL,
+  inspection_date            DATE NULL,
   notes                      TEXT NULL,
   created_at                 TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at                 TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_qr_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT
-  inspection_date DATE NULL,
 ) ENGINE=InnoDB;
-
-ALTER TABLE quote_requests
-  ADD COLUMN IF NOT EXISTS inspection_address VARCHAR(255) NULL AFTER wants_inspection,
-  ADD COLUMN IF NOT EXISTS preferred_inspection_date DATE NULL AFTER inspection_address;
 
 -- Items the client selected on the request form
 CREATE TABLE IF NOT EXISTS quote_request_items (
@@ -60,17 +58,6 @@ CREATE TABLE IF NOT EXISTS quote_request_items (
   CONSTRAINT chk_qri_qty CHECK (quantity >= 1),
   CONSTRAINT fk_qri_request FOREIGN KEY (request_id) REFERENCES quote_requests(id) ON DELETE CASCADE,
   CONSTRAINT fk_qri_item FOREIGN KEY (item_id) REFERENCES catalog_items(id) ON DELETE RESTRICT
-) ENGINE=InnoDB;
-
--- Free on-site inspection, scheduled by the admin (at most one per request)
-CREATE TABLE IF NOT EXISTS inspections (
-  id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  request_id     INT UNSIGNED NOT NULL UNIQUE,
-  scheduled_date DATETIME NOT NULL,
-  status         ENUM('Scheduled','Completed','Cancelled') NOT NULL DEFAULT 'Scheduled',
-  notes          TEXT NULL,
-  created_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_insp_request FOREIGN KEY (request_id) REFERENCES quote_requests(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- Official quotation prepared by the admin (at most one per request)
@@ -102,7 +89,7 @@ CREATE TABLE IF NOT EXISTS quotation_items (
   CONSTRAINT fk_qi_item FOREIGN KEY (item_id) REFERENCES catalog_items(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
--- Catalog data. Extinguisher types and the kitchen hood system come from the client's product list.
+-- Catalog data. INSERT IGNORE + the unique key means re-running this file never creates duplicates.
 INSERT IGNORE INTO catalog_items (name, category, description) VALUES
  ('Dry Chemical (ABC) Extinguisher - 2.2 lbs / 1 kg', 'Extinguisher', 'Compact option for suitable applications and limited spaces.'),
  ('Dry Chemical (ABC) Extinguisher - 5 lbs / 2.3 kg', 'Extinguisher', 'Suitable for light motor vehicles and other appropriate applications.'),
@@ -113,22 +100,16 @@ INSERT IGNORE INTO catalog_items (name, category, description) VALUES
  ('Foam Type (AFFF) Extinguisher - 50 lbs (Wheeled)', 'Extinguisher', 'A wheeled foam extinguisher designed for larger fire risks involving compatible flammable liquids and other suitable applications.'),
  ('Kitchen Hood Fire Suppression System', 'Suppression System', 'Fire protection designed for commercial kitchens. Protect your cooking equipment, kitchen hood, and surrounding areas with a professionally designed kitchen hood suppression system.');
 
-DELETE c1 FROM catalog_items c1
-JOIN catalog_items c2
-  ON c1.name = c2.name AND c1.category = c2.category AND c1.id > c2.id;
-ALTER TABLE catalog_items ADD UNIQUE KEY uq_item (category, name);
-
-DELETE FROM catalog_items WHERE category = 'FDAS';
-INSERT INTO catalog_items (name, category, description, is_active) VALUES
-('Conventional FDAS', 'FDAS', 'Zone-based fire detection and alarm system for small to mid-size buildings.', 1),
-('Addressable FDAS', 'FDAS', 'Every device reports its own address, so you see exactly where an alarm started.', 1),
-('Semi-Addressable FDAS', 'FDAS', 'Mix of zone-based and addressable devices for mid-size sites.', 1),
-('Smoke Detector', 'FDAS', 'Detects smoke particles early.', 1),
-('Heat Detector', 'FDAS', 'Detects a rise in temperature; suited to kitchens and dusty areas.', 1),
-('Beam Detector', 'FDAS', 'Detects smoke across large open spaces such as warehouses.', 1),
-('Strobe Horn', 'FDAS', 'Audible and visual alarm notification device.', 1),
-('Mechanical Bell', 'FDAS', 'Loud audible alarm bell.', 1),
-('Manual Call Point', 'FDAS', 'Break-glass station to trigger the alarm by hand.', 1);
+INSERT IGNORE INTO catalog_items (name, category, description, is_active) VALUES
+ ('Conventional FDAS', 'FDAS', 'Zone-based fire detection and alarm system for small to mid-size buildings.', 1),
+ ('Addressable FDAS', 'FDAS', 'Every device reports its own address, so you see exactly where an alarm started.', 1),
+ ('Semi-Addressable FDAS', 'FDAS', 'Mix of zone-based and addressable devices for mid-size sites.', 1),
+ ('Smoke Detector', 'FDAS', 'Detects smoke particles early.', 1),
+ ('Heat Detector', 'FDAS', 'Detects a rise in temperature; suited to kitchens and dusty areas.', 1),
+ ('Beam Detector', 'FDAS', 'Detects smoke across large open spaces such as warehouses.', 1),
+ ('Strobe Horn', 'FDAS', 'Audible and visual alarm notification device.', 1),
+ ('Mechanical Bell', 'FDAS', 'Loud audible alarm bell.', 1),
+ ('Manual Call Point', 'FDAS', 'Break-glass station to trigger the alarm by hand.', 1);
 
 INSERT IGNORE INTO catalog_items (name, category, description) VALUES
  ('Fire Extinguisher Inspection', 'Service', 'On-site inspection of extinguishers.'),

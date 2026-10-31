@@ -37,8 +37,11 @@
         <td>{{ r.items|length }}</td>
         <td>{{ 'Requested' if r.wants_inspection else '-' }}</td>
         <td><span class="status-badge status-{{ r.status|lower|replace(' ', '-') }}">{{ r.status }}</span></td>
-        <td class="text-end text-nowrap">
+                <td class="text-end text-nowrap">
           <a class="btn btn-sm btn-outline-brand" href="{{ url_for('client.request_detail', request_id=r.id) }}">View</a>
+          {% if r.status == 'Quote Sent' %}
+          <a class="btn btn-sm btn-brand" href="{{ url_for('client.download_quotation', request_id=r.id) }}" target="_blank">Quotation PDF</a>
+          {% endif %}
           {% if r.can_be_edited() %}
           <a class="btn btn-sm btn-outline-brand" href="{{ url_for('client.edit_request', request_id=r.id) }}">Edit</a>
           <form class="d-inline" method="post" action="{{ url_for('client.cancel_request', request_id=r.id) }}"

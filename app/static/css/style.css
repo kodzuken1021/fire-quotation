@@ -283,3 +283,5 @@ body {
   display: inline-flex; align-items: center; justify-content: center;
   background: var(--brand-red); color: #fff; font-size: 2.75rem; font-weight: 800;
 }
+
+.col-price { width: 12rem; }

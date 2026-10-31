@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Quotation for request #{{ req.id }}{% endblock %}
+{% block content %}
+<a class="small" href="{{ url_for('admin.request_detail', request_id=req.id) }}">&larr; Request #{{ req.id }}</a>
+<h1 class="h3 fw-bold my-2">Quotation for request #{{ req.id }}</h1>
+{% if client %}<p class="text-muted">{{ client.full_name }}{% if client.company_name %} &middot; {{ client.company_name }}{% endif %}</p>{% endif %}
+
+<form id="quote-builder" method="post" novalidate>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <div class="table-responsive bg-white border rounded-3 mb-3">
+    <table class="table align-middle mb-0">
+      <thead>
+        <tr><th>Item</th><th class="text-end">Qty</th><th style="width:12rem">Unit price (&#8369;)</th><th class="text-end">Line total</th></tr>
+      </thead>
+      <tbody>
+      {% for d in details %}
+        <tr>
+          <td>{{ d.name }} <small class="text-muted">({{ d.category }})</small></td>
+          <td class="text-end">{{ d.quantity }}</td>
+          <td>
+            <input class="form-control money-input{% if errors.get('price_' ~ d.id) %} is-invalid{% endif %}"
+                   type="text" inputmode="decimal" id="price_{{ d.id }}" name="price_{{ d.id }}"
+                   data-qty="{{ d.quantity }}" value="{{ form.get('price_' ~ d.id, '') }}">
+            <div class="invalid-feedback" id="price_{{ d.id }}-error">{{ errors.get('price_' ~ d.id, '') }}</div>
+          </td>
+          <td class="text-end line-total">&#8369;0.00</td>
+        </tr>
+      {% endfor %}
+      {% if req.needs_installation %}
+        <tr>
+          <td colspan="2">Installation charge</td>
+          <td>
+            <input class="form-control money-input charge{% if errors.get('installation_charge') %} is-invalid{% endif %}"
+                   type="text" inputmode="decimal" id="installation_charge" name="installation_charge"
+                   value="{{ form.get('installation_charge', '') }}">
+            <div class="invalid-feedback" id="installation_charge-error">{{ errors.get('installation_charge', '') }}</div>
+          </td>
+          <td class="text-end line-total">&#8369;0.00</td>
+        </tr>
+      {% endif %}
+      {% if req.needs_testing %}
+        <tr>
+          <td colspan="2">Testing charge</td>
+          <td>
+            <input class="form-control money-input charge{% if errors.get('testing_charge') %} is-invalid{% endif %}"
+                   type="text" inputmode="decimal" id="testing_charge" name="testing_charge"
+                   value="{{ form.get('testing_charge', '') }}">
+            <div class="invalid-feedback" id="testing_charge-error">{{ errors.get('testing_charge', '') }}</div>
+          </td>
+          <td class="text-end line-total">&#8369;0.00</td>
+        </tr>
+      {% endif %}
+      </tbody>
+      <tfoot>
+        <tr class="fw-bold"><td colspan="3" class="text-end">Total</td><td class="text-end" id="grand-total">&#8369;0.00</td></tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <div class="bg-white border rounded-3 p-3 mb-3">
+    <label class="form-label" for="valid_until">Quotation valid until</label>
+    <input class="form-control w-auto{% if errors.get('valid_until') %} is-invalid{% endif %}" type="date"
+           id="valid_until" name="valid_until" min="{{ today }}" value="{{ form.get('valid_until', '') }}">
+    <div class="invalid-feedback" id="valid_until-error">{{ errors.get('valid_until', '') }}</div>
+  </div>
+
+  <div class="d-flex gap-2">
+    <button class="btn btn-brand btn-lg" type="submit">Save quotation</button>
+    <a class="btn btn-outline-brand btn-lg" href="{{ url_for('admin.request_detail', request_id=req.id) }}">Back</a>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}<script src="{{ url_for('static', filename='js/quote_builder.js') }}"></script>{% endblock %}

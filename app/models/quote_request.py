@@ -2,6 +2,7 @@ from datetime import date, datetime
 
 from ..db import get_db
 
+
 STATUSES = ("Pending", "Inspection Scheduled", "Quote Sent", "Cancelled")
 
 
@@ -181,6 +182,7 @@ class QuoteRequest:
                          self.inspection_address, self.preferred_date, self.notes, self._id, self._user_id),
                     )
                     cur.execute("DELETE FROM quote_request_items WHERE request_id = %s", (self._id,))
+                    cur.execute("DELETE FROM quotations WHERE request_id = %s", (self._id,))   # edited request: old draft quote is void
                 cur.executemany(
                     "INSERT INTO quote_request_items (request_id, item_id, quantity) VALUES (%s, %s, %s)",
                     [(self._id, item_id, qty) for item_id, qty in self._items.items()],

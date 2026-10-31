@@ -112,7 +112,7 @@ def admin_login():
                     session["name"] = user.full_name
                     flash(f"Welcome back, {user.full_name}!", "success")
                     return redirect(url_for("admin.dashboard"))
-                if user is None:
+                if user is None or user.role != "admin":
                     User.dummy_verify(password)
                 login_throttle.record_failure(key)
                 flash("Invalid admin email or password.", "danger")

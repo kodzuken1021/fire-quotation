@@ -34,6 +34,16 @@
   <p class="mb-0"><strong>Notes:</strong> {{ req.notes or '-' }}</p>
 </div>
 
+{% if quotation %}
+<div class="bg-white border rounded-3 p-3 mb-3">
+  <h2 class="h6 fw-bold">Official quotation</h2>
+  <p class="mb-1"><strong>No.:</strong> {{ quotation.quotation_no }}</p>
+  <p class="mb-1"><strong>Total:</strong> &#8369;{{ '{:,.2f}'.format(quotation.total) }}</p>
+  <p class="mb-2"><strong>Valid until:</strong> {{ quotation.valid_until.strftime('%b %d, %Y') if quotation.valid_until else '-' }}</p>
+  <a class="btn btn-brand" href="{{ url_for('client.download_quotation', request_id=req.id) }}" target="_blank">View / download PDF</a>
+</div>
+{% endif %}
+
 {% if req.can_be_edited() %}
 <a class="btn btn-outline-brand" href="{{ url_for('client.edit_request', request_id=req.id) }}">Edit request</a>
 <form class="d-inline" method="post" action="{{ url_for('client.cancel_request', request_id=req.id) }}"

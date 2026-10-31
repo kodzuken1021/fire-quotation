@@ -4,6 +4,7 @@ The same rules also run in static/js/validation.js for instant feedback, but thi
 file is the one that counts: browser checks can always be bypassed.
 """
 from datetime import date
+from decimal import Decimal
 import re
 
 try:
@@ -60,6 +61,8 @@ def validate_email(raw, restrict=RESTRICT_EMAIL_DOMAINS, check_dns=True):
     email = clean(raw).lower()
     if not EMAIL_RE.match(email):
         return email, "Enter a valid email address."
+    if len(email) > 120:
+      return email, "Email must be 120 characters or fewer."
     local, domain = email.rsplit("@", 1)
     if len(local) < 2:
         return email, "The part before @ must be at least 2 characters."
@@ -217,3 +220,39 @@ def validate_catalog_item(form, categories):
     if len(data["description"]) > 500:
         errors["description"] = "Description must be 500 characters or fewer."
     return data, errors
+
+MONEY_RE = re.compile(r"[0-9]{1,7}(\.[0-9]{1,2})?")
+
+
+def validate_quotation(form, details, needs_installation, needs_testing):
+    """details = request.item_details(). Returns (data, errors)."""
+    errors, lines = {}, []
+    msg = "Enter an amount from 0 to 9,999,999.99."
+
+    for d in details:
+        raw = clean(form.get(f"price_{d['id']}")).replace(",", "")
+        if MONEY_RE.fullmatch(raw):
+            lines.append((d["id"], d["quantity"], Decimal(raw)))
+        else:
+            errors[f"price_{d['id']}"] = msg
+
+    charges = {}
+    for key, needed in (("installation_charge", needs_installation), ("testing_charge", needs_testing)):
+        if not needed:
+            charges[key] = Decimal("0")
+            continue
+        raw = clean(form.get(key)).replace(",", "")
+        if MONEY_RE.fullmatch(raw):
+            charges[key] = Decimal(raw)
+        else:
+            errors[key] = msg
+
+    valid_until = None
+    try:
+        valid_until = date.fromisoformat(clean(form.get("valid_until")))
+        if valid_until < date.today():
+            errors["valid_until"] = "The validity date cannot be in the past."
+    except ValueError:
+        errors["valid_until"] = "Choose a valid date."
+
+    return {"lines": lines, "valid_until": valid_until, **charges}, errors

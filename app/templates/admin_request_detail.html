@@ -35,8 +35,47 @@
   {% if req.wants_inspection %}
   <p class="mb-1"><strong>Inspection address:</strong> {{ req.inspection_address or '-' }}</p>
   <p class="mb-1"><strong>Preferred date:</strong> {{ req.preferred_date.strftime('%b %d, %Y') if req.preferred_date else 'No preference' }}</p>
+  <p class="mb-2"><strong>Scheduled date:</strong>
+    {{ req.inspection_date.strftime('%b %d, %Y') if req.inspection_date else 'Not scheduled yet' }}</p>
+  {% if req.status in ('Pending', 'Inspection Scheduled') %}
+  <form method="post" action="{{ url_for('admin.schedule_inspection', request_id=req.id) }}" class="d-flex gap-2 align-items-end mb-2">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div>
+      <label class="form-label small mb-1" for="inspection_date">Inspection date</label>
+      <input class="form-control" type="date" id="inspection_date" name="inspection_date"
+             min="{{ today }}" value="{{ req.inspection_date.isoformat() if req.inspection_date else '' }}" required>
+    </div>
+    <button class="btn btn-brand" type="submit">Schedule &amp; email</button>
+  </form>
+  {% endif %}
   {% endif %}
   <p class="mb-0"><strong>Notes:</strong> {{ req.notes or '-' }}</p>
+</div>
+
+<div class="bg-white border rounded-3 p-3 mb-3">
+  <h2 class="h6 fw-bold">Quotation</h2>
+  {% if quotation %}
+  <p class="mb-1"><strong>No.:</strong> {{ quotation.quotation_no }}</p>
+  <p class="mb-1"><strong>Total:</strong> &#8369;{{ '{:,.2f}'.format(quotation.total) }}</p>
+  <p class="mb-2"><strong>Valid until:</strong> {{ quotation.valid_until.strftime('%b %d, %Y') if quotation.valid_until else '-' }}</p>
+  {% else %}
+  <p class="text-muted">No quotation yet.</p>
+  {% endif %}
+
+  {% if quotation and quotation.sent_at %}
+  <p class="mb-0 text-success"><strong>Sent</strong> on {{ quotation.sent_at.strftime('%b %d, %Y %I:%M %p') }}</p>
+  {% elif req.status in ('Pending', 'Inspection Scheduled') %}
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-outline-brand" href="{{ url_for('admin.build_quote', request_id=req.id) }}">{{ 'Edit quotation' if quotation else 'Build quotation' }}</a>
+    {% if quotation %}
+    <form method="post" action="{{ url_for('admin.send_quote', request_id=req.id) }}"
+          data-confirm="Email this quotation to the client? It cannot be edited after it is sent.">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-brand" type="submit">Generate PDF &amp; email</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
 </div>
 
 <div class="bg-white border rounded-3 p-3">

@@ -3,13 +3,14 @@ from abc import ABC, abstractmethod
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from ..db import get_db
+from .base import BaseModel
 
 _SELECT = "SELECT id, full_name, email, password_hash, role, company_name, contact_number, profile_photo FROM users "
 # Used so a login for an unknown email takes as long as one for a real email
 _DUMMY_HASH = generate_password_hash("not-a-real-password")
 
 
-class User(ABC):
+class User(BaseModel, ABC):
     """Base class for every account.
 
     Encapsulation: the password hash is private and only touched by set_password()
@@ -69,23 +70,18 @@ class User(ABC):
     def save(self):
         """Insert a new user. The caller handles database errors."""
         if self._id is not None:
-            raise ValueError("Updating an existing user is not built yet.")
+            raise ValueError("Use update_profile() to change an existing user.")
         if not self._password_hash:
             raise ValueError("Set a password before saving.")
-        conn = get_db()
-        try:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "INSERT INTO users (full_name, email, password_hash, role, company_name, contact_number) "
-                    "VALUES (%s, %s, %s, %s, %s, %s)",
-                    (self._full_name, self._email, self._password_hash, self.role,
-                     self._company_name, self._contact_number),
-                )
-                self._id = cur.lastrowid
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
+        with self.transaction() as cur:
+            cur.execute(
+                "INSERT INTO users (full_name, email, password_hash, role, company_name, contact_number) "
+                "VALUES (%s, %s, %s, %s, %s, %s)",
+                (self._full_name, self._email, self._password_hash, self.role,
+                 self._company_name, self._contact_number),
+            )
+            new_id = cur.lastrowid
+        self._id = new_id        # set only after the commit succeeded
         return self
 
     @staticmethod
@@ -114,24 +110,14 @@ class User(ABC):
             cur.execute("SELECT 1 FROM users WHERE email = %s", (email,))
             return cur.fetchone() is not None
 
-        # ---- profile updates ----
-    @staticmethod
-    def _run_update(sql, params):
-        conn = get_db()
-        try:
-            with conn.cursor() as cur:
-                cur.execute(sql, params)
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
-
+    # ---- profile updates ----
     def update_profile(self, full_name, email, company_name, contact_number):
         if self._id is None:
             raise ValueError("Save the user first.")
-        self._run_update(
-            "UPDATE users SET full_name=%s, email=%s, company_name=%s, contact_number=%s WHERE id=%s",
-            (full_name, email, company_name, contact_number, self._id))
+        with self.transaction() as cur:
+            cur.execute(
+                "UPDATE users SET full_name=%s, email=%s, company_name=%s, contact_number=%s WHERE id=%s",
+                (full_name, email, company_name, contact_number, self._id))
         self._full_name, self._email = full_name, email
         self._company_name, self._contact_number = company_name, contact_number
 
@@ -139,11 +125,13 @@ class User(ABC):
         if not self.verify_password(old_password):
             raise ValueError("Current password is incorrect.")
         new_hash = generate_password_hash(new_password)
-        self._run_update("UPDATE users SET password_hash=%s WHERE id=%s", (new_hash, self._id))
+        with self.transaction() as cur:
+            cur.execute("UPDATE users SET password_hash=%s WHERE id=%s", (new_hash, self._id))
         self._password_hash = new_hash
 
     def set_profile_photo(self, filename):
-        self._run_update("UPDATE users SET profile_photo=%s WHERE id=%s", (filename, self._id))
+        with self.transaction() as cur:
+            cur.execute("UPDATE users SET profile_photo=%s WHERE id=%s", (filename, self._id))
         self._profile_photo = filename
 
     @staticmethod
@@ -151,6 +139,7 @@ class User(ABC):
         with get_db().cursor() as cur:
             cur.execute("SELECT 1 FROM users WHERE email = %s AND id <> %s", (email, user_id))
             return cur.fetchone() is not None
+
 
 class Client(User):
     """A customer who requests quotes."""

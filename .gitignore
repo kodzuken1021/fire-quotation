@@ -13,3 +13,4 @@ app/static/uploads/*
 .idea/
 .DS_Store
 Thumbs.db
+instance/
