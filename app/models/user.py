@@ -1,3 +1,4 @@
+import hashlib
 from abc import ABC, abstractmethod
 
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -124,6 +125,18 @@ class User(BaseModel, ABC):
     def change_password(self, old_password, new_password):
         if not self.verify_password(old_password):
             raise ValueError("Current password is incorrect.")
+        new_hash = generate_password_hash(new_password)
+        with self.transaction() as cur:
+            cur.execute("UPDATE users SET password_hash=%s WHERE id=%s", (new_hash, self._id))
+        self._password_hash = new_hash
+        
+    def reset_fingerprint(self):
+        """Short hash of the current password hash. A reset link carries it, so the
+        link stops working the moment the password changes (single use)."""
+        return hashlib.sha256((self._password_hash or "").encode()).hexdigest()[:16]
+
+    def reset_password(self, new_password):
+        """Set a new password without the old one (only after a valid reset link)."""
         new_hash = generate_password_hash(new_password)
         with self.transaction() as cur:
             cur.execute("UPDATE users SET password_hash=%s WHERE id=%s", (new_hash, self._id))

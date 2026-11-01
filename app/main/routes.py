@@ -1,5 +1,5 @@
 import pymysql
-from flask import Blueprint, flash, render_template, request
+from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
 from ..models.catalog_item import CATEGORIES, CatalogItem
 
@@ -8,6 +8,8 @@ main_bp = Blueprint("main", __name__)
 
 @main_bp.route("/")
 def home():
+    if session.get("role") == "admin":
+        return redirect(url_for("admin.dashboard"))
     return render_template("home.html")
 
 

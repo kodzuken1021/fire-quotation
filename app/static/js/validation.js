@@ -63,6 +63,13 @@
       new_password: (v, form) => v.length < 8 || !/\d/.test(v) ? "Password must be at least 8 characters and include a number."
         : v === form.elements.old_password.value ? "The new password must be different from the current one." : "",
       confirm_password: (v, form) => v === form.elements.new_password.value ? "" : "Passwords do not match."
+    },
+        forgot: {
+      email: v => EMAIL_RE.test(v) ? "" : "Enter a valid email address."
+    },
+    reset: {
+      new_password: v => v.length < 8 || !/\d/.test(v) ? "Password must be at least 8 characters and include a number." : "",
+      confirm_password: (v, form) => v === form.elements.new_password.value ? "" : "Passwords do not match."
     }
   };
 

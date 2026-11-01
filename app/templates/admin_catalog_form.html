@@ -4,7 +4,7 @@
 <a class="small" href="{{ url_for('admin.catalog_list') }}">&larr; Manage catalog</a>
 <h1 class="h3 fw-bold my-2">{{ 'Edit item' if item else 'Add item' }}</h1>
 
-<form class="quote-card" method="post" style="max-width: 640px;">
+<form class="quote-card form-narrow" method="post">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
   <div class="mb-3">

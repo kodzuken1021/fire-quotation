@@ -40,7 +40,7 @@
       if (!ok && !firstBad) firstBad = input;
     });
     const date = document.getElementById("valid_until");
-    const today = new Date().toISOString().slice(0, 10);
+    const today = date.min; // Server-rendered local date; avoids UTC day shifts.
     if (!setError(date, date.value && date.value >= today ? "" : "Choose a date that is today or later.") && !firstBad) firstBad = date;
     if (firstBad) { e.preventDefault(); firstBad.focus(); }
   });

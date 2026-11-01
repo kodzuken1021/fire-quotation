@@ -1,12 +1,25 @@
+
 from datetime import date, datetime
 
 from ..db import get_db
+from .base import BaseModel
 
 
-STATUSES = ("Pending", "Inspection Scheduled", "Quote Sent", "Cancelled")
+STATUSES = ("Pending", "Inspection Scheduled", "Quote Sent", "Accepted", "Declined", "Cancelled")
+
+# Manual admin changes are deliberately limited. Inspection Scheduled is set by
+# schedule_inspection(), and Quote Sent is set only after the email is sent.
+ADMIN_STATUS_TRANSITIONS = {
+    "Pending": ("Cancelled",),
+    "Inspection Scheduled": ("Cancelled",),
+    "Quote Sent": (),
+    "Accepted": (),
+    "Declined": (),
+    "Cancelled": (),
+}
 
 
-class QuoteRequest:
+class QuoteRequest(BaseModel):
     """One quote request by a client, with the items they selected."""
 
     def __init__(self, user_id, needs_installation=False, needs_testing=False,
@@ -65,10 +78,40 @@ class QuoteRequest:
         if self._id is not None:
             self._update_status()
 
+    def admin_status_options(self):
+        """Statuses the admin may select directly from the current state."""
+        return ADMIN_STATUS_TRANSITIONS.get(self._status, ())
+
+    def admin_set_status(self, new_status):
+        """Apply a manual admin status change without bypassing the workflow."""
+        if new_status == "Quote Sent":
+            raise ValueError("Quote Sent is set automatically when you email the quotation.")
+        if new_status == "Inspection Scheduled":
+            raise ValueError("Use the inspection form to choose a date and email the client.")
+        if new_status not in self.admin_status_options():
+            raise ValueError("That status change is not allowed for this request.")
+        if self._id is None:
+            raise ValueError("Save the request first.")
+        self._status = new_status
+        self._update_status()
+
     def cancel(self):
         if not self.can_be_edited():
             raise ValueError("Only pending requests can be cancelled.")
         self.set_status("Cancelled")
+
+    def respond_to_quote(self, accepted):
+        """Client accepts or declines a sent quotation. Only valid while Quote Sent."""
+        if self._id is None:
+            raise ValueError("Save the request first.")
+        new_status = "Accepted" if accepted else "Declined"
+        with self.transaction() as cur:
+            cur.execute(
+                "UPDATE quote_requests SET status = %s WHERE id = %s AND user_id = %s AND status = 'Quote Sent'",
+                (new_status, self._id, self._user_id))
+            if cur.rowcount != 1:
+                raise ValueError("This quotation can no longer be answered.")
+        self._status = new_status
 
     def update_details(self, needs_installation, needs_testing, wants_inspection, notes,
                        inspection_address=None, preferred_date=None):
@@ -118,34 +161,22 @@ class QuoteRequest:
             raise ValueError("Only pending or scheduled requests can get an inspection date.")
         if when < date.today():
             raise ValueError("The inspection date cannot be in the past.")
-        conn = get_db()
-        try:
-            with conn.cursor() as cur:
-                cur.execute("SELECT status FROM quote_requests WHERE id = %s FOR UPDATE", (self._id,))
-                row = cur.fetchone()
-                if row is None or row["status"] not in ("Pending", "Inspection Scheduled"):
-                    raise ValueError("This request changed. Reload the page and try again.")
-                cur.execute(
-                    "UPDATE quote_requests SET inspection_date = %s, status = 'Inspection Scheduled' WHERE id = %s",
-                    (when, self._id),
-                )
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
+        with self.transaction() as cur:
+            cur.execute("SELECT status FROM quote_requests WHERE id = %s FOR UPDATE", (self._id,))
+            row = cur.fetchone()
+            if row is None or row["status"] not in ("Pending", "Inspection Scheduled"):
+                raise ValueError("This request changed. Reload the page and try again.")
+            cur.execute(
+                "UPDATE quote_requests SET inspection_date = %s, status = 'Inspection Scheduled' WHERE id = %s",
+                (when, self._id),
+            )
         self._inspection_date = when
         self._status = "Inspection Scheduled"
 
     # ---- database ----
     def _update_status(self):
-        conn = get_db()
-        try:
-            with conn.cursor() as cur:
-                cur.execute("UPDATE quote_requests SET status = %s WHERE id = %s", (self._status, self._id))
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
+        with self.transaction() as cur:
+            cur.execute("UPDATE quote_requests SET status = %s WHERE id = %s", (self._status, self._id))
 
     def save(self):
         """Insert or update a pending request and its items atomically."""
@@ -235,7 +266,24 @@ class QuoteRequest:
             for r in cur.fetchall():
                 counts[r["status"]] = r["n"]
         return counts
-
+    
+    @staticmethod
+    def calendar_events(start, end):
+        """Inspection events from start to end (inclusive) for the admin calendar.
+        Uses the confirmed date if set, otherwise the client's preferred date."""
+        sql = (
+            "SELECT r.id, r.status, r.inspection_address, "
+            "COALESCE(r.inspection_date, r.preferred_inspection_date) AS day, "
+            "(r.inspection_date IS NOT NULL) AS confirmed, "
+            "u.full_name, u.company_name "
+            "FROM quote_requests r JOIN users u ON u.id = r.user_id "
+            "WHERE r.wants_inspection = 1 AND r.status <> 'Cancelled' "
+            "AND COALESCE(r.inspection_date, r.preferred_inspection_date) BETWEEN %s AND %s "
+            "ORDER BY day, r.id"
+        )
+        with get_db().cursor() as cur:
+            cur.execute(sql, (start, end))
+            return cur.fetchall()
     @staticmethod
     def all_with_clients(status=None):
         """Every request (admin view) as a list of (QuoteRequest, client_info_dict)."""
@@ -254,12 +302,6 @@ class QuoteRequest:
 
     @staticmethod
     def delete_by_id(request_id):
-        conn = get_db()
-        try:
-            with conn.cursor() as cur:
-                cur.execute("DELETE FROM quote_request_items WHERE request_id = %s", (request_id,))
-                cur.execute("DELETE FROM quote_requests WHERE id = %s", (request_id,))
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
+        with BaseModel.transaction() as cur:
+            cur.execute("DELETE FROM quote_request_items WHERE request_id = %s", (request_id,))
+            cur.execute("DELETE FROM quote_requests WHERE id = %s", (request_id,))

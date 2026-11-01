@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Inspection calendar{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    <h1 class="h3 fw-bold mb-0">Inspection calendar</h1>
+    <p class="text-muted mb-0">Confirmed visits and the dates clients asked for.</p>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <a class="btn btn-outline-brand btn-sm" aria-label="Previous month"
+       href="{{ url_for('admin.calendar_view', year=prev_month.year, month=prev_month.month) }}">&larr;</a>
+    <strong class="px-2">{{ month_name }}</strong>
+    <a class="btn btn-outline-brand btn-sm" aria-label="Next month"
+       href="{{ url_for('admin.calendar_view', year=next_month.year, month=next_month.month) }}">&rarr;</a>
+    <a class="btn btn-brand btn-sm" href="{{ url_for('admin.calendar_view') }}">Today</a>
+  </div>
+</div>
+
+<div class="d-flex gap-3 small mb-2">
+  <span><span class="cal-dot is-confirmed"></span> Scheduled</span>
+  <span><span class="cal-dot is-preferred"></span> Client's preferred date (not yet scheduled)</span>
+</div>
+
+<div class="cal-scroll bg-white border rounded-3">
+  <div class="cal">
+    {% for name in ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] %}
+      <div class="cal-head">{{ name }}</div>
+    {% endfor %}
+    {% for week in weeks %}{% for d in week %}
+      <div class="cal-day{% if d.month != month %} is-other{% endif %}{% if d == today %} is-today{% endif %}">
+        <div class="cal-num">{{ d.day }}</div>
+        {% for e in by_day.get(d, []) %}
+          <a class="cal-event {{ 'is-confirmed' if e.confirmed else 'is-preferred' }}"
+             href="{{ url_for('admin.request_detail', request_id=e.id) }}"
+             title="#{{ e.id }} · {{ e.full_name }} · {{ e.inspection_address or '' }}">
+            #{{ e.id }} {{ e.company_name or e.full_name }}
+          </a>
+        {% endfor %}
+      </div>
+    {% endfor %}{% endfor %}
+  </div>
+</div>
+{% endblock %}

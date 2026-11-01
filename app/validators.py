@@ -15,8 +15,8 @@ except ImportError:      # dnspython not installed: the DNS check is skipped
 
 NAME_RE = re.compile(r"^[A-Za-z'-]{2,20}$")
 EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$")
-PHONE_RE = re.compile(r"^09\d{9}$")
-REPEAT_RE = re.compile(r"(\d)\1{3,}")              # same digit 4+ times in a row
+PHONE_RE = re.compile(r"^09\d{9}$", re.ASCII)
+REPEAT_RE = re.compile(r"(\d)\1{3,}", re.ASCII)    # same digit 4+ times in a row
 COMPANY_RE = re.compile(r"^[A-Za-z0-9 .,&'()\-]{2,100}$")
 FULL_NAME_RE = re.compile(r"^[A-Za-z'-]+(?: [A-Za-z'-]+)*$")
 
@@ -102,7 +102,7 @@ def validate_registration(form):
 
     password = form.get("password") or ""
     confirm = form.get("confirm_password") or ""
-    if len(password) < 8 or not re.search(r"\d", password):
+    if len(password) < 8 or not re.search(r"\d", password, re.ASCII):
         errors["password"] = "Password must be at least 8 characters and include a number."
     elif len(password) > 128:
         errors["password"] = "Password is too long (128 characters maximum)."
@@ -194,7 +194,7 @@ def validate_password_change(form):
     errors = {}
     if not old:
         errors["old_password"] = "Enter your current password."
-    if len(new) < 8 or not re.search(r"\d", new):
+    if len(new) < 8 or not re.search(r"\d", new, re.ASCII):
         errors["new_password"] = "Password must be at least 8 characters and include a number."
     elif len(new) > 128:
         errors["new_password"] = "Password is too long (128 characters maximum)."
@@ -256,3 +256,15 @@ def validate_quotation(form, details, needs_installation, needs_testing):
         errors["valid_until"] = "Choose a valid date."
 
     return {"lines": lines, "valid_until": valid_until, **charges}, errors
+
+def validate_reset_password(form):
+    new = form.get("new_password") or ""
+    confirm = form.get("confirm_password") or ""
+    errors = {}
+    if len(new) < 8 or not re.search(r"\d", new, re.ASCII):
+        errors["new_password"] = "Password must be at least 8 characters and include a number."
+    elif len(new) > 128:
+        errors["new_password"] = "Password is too long (128 characters maximum)."
+    elif new != confirm:
+        errors["confirm_password"] = "Passwords do not match."
+    return {"new": new}, errors

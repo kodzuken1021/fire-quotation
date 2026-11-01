@@ -23,6 +23,11 @@ def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
 
+    if not app.config.get("SECRET_KEY") or app.config["SECRET_KEY"] == "dev-only-change-me":
+        raise RuntimeError(
+            "SECRET_KEY is missing or insecure. Set a unique SECRET_KEY in your .env file."
+        )
+
     csrf.init_app(app)
     mail.init_app(app)
     db.init_app(app)

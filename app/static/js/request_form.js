@@ -61,7 +61,7 @@
     if (wants.checked) {
       const a = address.value.trim();
       if (!setError(address, a.length >= 5 && a.length <= 255 ? "" : "Enter the site address (5 to 255 characters).")) bad(address);
-      const today = new Date().toISOString().slice(0, 10);
+      const today = dateInput.min; // Server-rendered local date; avoids UTC day shifts.
       if (dateInput.value && !setError(dateInput, dateInput.value < today ? "Preferred date cannot be in the past." : "")) bad(dateInput);
     }
 

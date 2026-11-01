@@ -4,15 +4,42 @@ import uuid
 import pymysql
 from flask import (Blueprint, current_app, flash, redirect, render_template,
                    request, session, url_for)
+from itsdangerous import BadSignature, URLSafeTimedSerializer
+
+from ..mailer import send_password_reset
 
 from ..decorators import login_required
 from ..models.user import Client, User
 from ..security import detect_image_type, login_throttle
-from ..validators import validate_password_change, validate_profile, validate_registration
+from ..validators import (validate_email, validate_password_change, validate_profile,
+                          validate_registration, validate_reset_password)
 auth_bp = Blueprint("auth", __name__)
 
 DB_DOWN = "We could not reach the database. Please try again in a moment."
 
+RESET_MAX_AGE = 30 * 60          # reset links last 30 minutes
+
+
+def _serializer():
+    return URLSafeTimedSerializer(current_app.config["SECRET_KEY"], salt="password-reset")
+
+
+def _send_reset_email(user):
+    token = _serializer().dumps({"id": user.id, "fp": user.reset_fingerprint()})
+    link = url_for("auth.reset_password", token=token, _external=True)
+    return send_password_reset(user, link)
+
+
+def _user_from_token(token):
+    """Returns the user for a valid, unexpired, unused token, else None."""
+    try:
+        data = _serializer().loads(token, max_age=RESET_MAX_AGE)
+    except BadSignature:                  # also covers expired tokens
+        return None
+    user = User.find_by_id(data.get("id"))
+    if user is None or data.get("fp") != user.reset_fingerprint():
+        return None
+    return user
 
 def _home_for(role):
     return url_for("admin.dashboard" if role == "admin" else "client.dashboard")
@@ -67,7 +94,7 @@ def login():
             except pymysql.MySQLError:
                 flash(DB_DOWN, "danger")
             else:
-                if user and user.verify_password(password):
+                if user and user.role == "client" and user.verify_password(password):
                     login_throttle.reset(key)
                     session.clear()                  # drop anything left from before login
                     session.permanent = True         # idle timeout: PERMANENT_SESSION_LIFETIME
@@ -76,7 +103,7 @@ def login():
                     session["name"] = user.full_name
                     flash(f"Welcome back, {user.full_name}!", "success")
                     return redirect(url_for(user.dashboard_endpoint))
-                if user is None:
+                if user is None or user.role != "client":
                     User.dummy_verify(password)      # same response time whether or not the email exists
                 login_throttle.record_failure(key)
                 flash("Invalid email or password.", "danger")   # same message for both cases on purpose
@@ -118,6 +145,78 @@ def admin_login():
                 flash("Invalid admin email or password.", "danger")
     return render_template("admin_login.html", email=email)
 
+@auth_bp.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    if "user_id" in session:                      # logged-in users use the button on their profile
+        return redirect(url_for("auth.profile"))
+
+    email = ""
+    if request.method == "POST":
+        email, error = validate_email(request.form.get("email"), restrict=False, check_dns=False)
+        key = f"forgot|{request.remote_addr}"
+        if error:
+            flash(error, "danger")
+        elif login_throttle.is_blocked(key):
+            flash(f"Too many requests. Try again in {login_throttle.minutes_left(key)} minute(s).", "danger")
+        else:
+            login_throttle.record_failure(key)    # counts every request: max 5 per 5 minutes
+            try:
+                user = User.find_by_email(email)
+                if user:
+                    _send_reset_email(user)
+            except pymysql.MySQLError:
+                flash(DB_DOWN, "danger")
+                return render_template("forgot_password.html", email=email)
+            # Same message whether or not the email exists, so nobody can probe for accounts
+            flash("If that email is registered, a password reset link is on its way. "
+                  "It works for 30 minutes.", "success")
+            return redirect(url_for("auth.login"))
+    return render_template("forgot_password.html", email=email)
+
+
+@auth_bp.route("/reset-password/<token>", methods=["GET", "POST"])
+def reset_password(token):
+    try:
+        user = _user_from_token(token)
+    except pymysql.MySQLError:
+        flash(DB_DOWN, "danger")
+        return redirect(url_for("auth.login"))
+    if user is None:
+        flash("That reset link is invalid or has expired. Please request a new one.", "danger")
+        return redirect(url_for("auth.forgot_password"))
+
+    errors = {}
+    if request.method == "POST":
+        data, errors = validate_reset_password(request.form)
+        if not errors:
+            try:
+                user.reset_password(data["new"])
+            except pymysql.MySQLError:
+                flash(DB_DOWN, "danger")
+            else:
+                session.clear()
+                flash("Password reset. You can now log in with your new password.", "success")
+                return redirect(url_for("auth.admin_login" if user.role == "admin" else "auth.login"))
+    return render_template("reset_password.html", token=token, errors=errors)
+
+
+@auth_bp.route("/profile/password/reset-link", methods=["POST"])
+@login_required
+def profile_reset_link():
+    user = _load_user()
+    if user is None:
+        flash(DB_DOWN, "danger")
+        return redirect(url_for("main.home"))
+    key = f"forgot|{request.remote_addr}"
+    if login_throttle.is_blocked(key):
+        flash(f"Too many requests. Try again in {login_throttle.minutes_left(key)} minute(s).", "danger")
+    else:
+        login_throttle.record_failure(key)
+        if _send_reset_email(user):
+            flash(f"A reset link was sent to {user.email}. It works for 30 minutes.", "success")
+        else:
+            flash("We could not send the email. Please try again later.", "warning")
+    return redirect(url_for("auth.profile"))
 
 # ---------------- profile (client and admin) ----------------
 def _remove_photo_file(filename):

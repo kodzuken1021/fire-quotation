@@ -21,12 +21,13 @@
         <label for="email">Email</label>
         <div class="invalid-feedback" id="email-error"></div>
       </div>
-      <div class="form-floating mb-4">
+      <div class="form-floating mb-2">
         <input class="form-control has-toggle" id="password" name="password" type="password" placeholder="Password" autocomplete="current-password" required>
         <label for="password">Password</label>
         <button type="button" class="pw-toggle" data-target="password" aria-label="Show password" aria-pressed="false">{% include "_eye_icons.html" %}</button>
 <div class="invalid-feedback" id="password-error"></div>
       </div>
+      <div class="text-end mb-3"><a class="small" href="{{ url_for('auth.forgot_password') }}">Forgot password?</a></div>
       <button class="btn btn-brand btn-lg w-100" type="submit">Log in</button>
     </form>
     <p class="auth-switch">No account yet? <a href="{{ url_for('auth.register') }}">Register</a></p>

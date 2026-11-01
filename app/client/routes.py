@@ -215,6 +215,25 @@ def cancel_request(request_id):
         flash(DB_DOWN, "danger")
     return redirect(url_for("client.dashboard"))
 
+@client_bp.route("/requests/<int:request_id>/respond", methods=["POST"])
+@client_required
+def respond_to_quote(request_id):
+    decision = request.form.get("decision", "")
+    if decision not in ("accept", "decline"):
+        abort(400)
+    try:
+        quote_request = QuoteRequest.find(request_id, session["user_id"])
+        if quote_request is None:
+            abort(404)
+        quote_request.respond_to_quote(decision == "accept")
+        flash("You accepted the quotation. We will contact you to proceed." if decision == "accept"
+              else "You declined the quotation.", "success" if decision == "accept" else "info")
+    except ValueError as error:
+        flash(str(error), "warning")
+    except pymysql.MySQLError:
+        flash(DB_DOWN, "danger")
+    return redirect(url_for("client.request_detail", request_id=request_id))
+
 @client_bp.route("/requests/<int:request_id>/quotation")
 @client_required
 def download_quotation(request_id):

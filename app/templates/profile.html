@@ -65,6 +65,13 @@
         {{ field("confirm_password", "Confirm new password", "", pw_errors.get("confirm_password", ""), "password", "new-password", true) }}
         <button class="btn btn-brand" type="submit">Change password</button>
       </form>
+      <hr class="my-3">
+      <p class="small text-muted mb-2">Forgot your current password? We will email a reset link to {{ user.email }}.</p>
+      <form method="post" action="{{ url_for('auth.profile_reset_link') }}"
+            data-confirm="Email a password reset link to {{ user.email }}?">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-outline-brand btn-sm" type="submit">Email me a reset link</button>
+      </form>
     </div>
   </div>
 </div>

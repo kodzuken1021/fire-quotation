@@ -1,5 +1,6 @@
 import os
 import pymysql
+import calendar
 from flask import current_app
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from ..mailer import send_inspection_schedule, send_quotation
@@ -29,6 +30,30 @@ def dashboard():
     return render_template("admin_dashboard.html", rows=rows, counts=counts,
                            status=status, statuses=STATUSES)
 
+@admin_bp.route("/calendar")
+@admin_required
+def calendar_view():
+    today = date.today()
+    year = request.args.get("year", today.year, type=int)
+    month = request.args.get("month", today.month, type=int)
+    if not (1 <= month <= 12 and 2000 <= year <= 2100):
+        year, month = today.year, today.month
+
+    first = date(year, month, 1)
+    weeks = calendar.Calendar(firstweekday=6).monthdatescalendar(year, month)  # Sunday first
+    by_day = {}
+    try:
+        for e in QuoteRequest.calendar_events(weeks[0][0], weeks[-1][-1]):
+            by_day.setdefault(e["day"], []).append(e)
+    except pymysql.MySQLError:
+        flash(DB_DOWN, "danger")
+
+    prev_month = first - timedelta(days=1)
+    next_month = (first + timedelta(days=32)).replace(day=1)
+    return render_template("admin_calendar.html", weeks=weeks, by_day=by_day, year=year,
+                           month=month, month_name=first.strftime("%B %Y"), today=today,
+                           prev_month=prev_month, next_month=next_month)
+
 
 @admin_bp.route("/requests/<int:request_id>")
 @admin_required
@@ -44,24 +69,18 @@ def request_detail(request_id):
         flash(DB_DOWN, "danger")
         return redirect(url_for("admin.dashboard"))
     return render_template("admin_request_detail.html", req=req, details=details,
-                           client=client, statuses=STATUSES, quotation=quotation,   # add quotation
-                           today=date.today().isoformat())
+                           client=client, status_options=req.admin_status_options(),
+                           quotation=quotation, today=date.today().isoformat())
 
 
 @admin_bp.route("/requests/<int:request_id>/status", methods=["POST"])
 @admin_required
 def update_status(request_id):
     try:
-        if request.form.get("status") == "Quote Sent":
-            flash("Quote Sent is set automatically when you email the quotation.", "warning")
-            return redirect(url_for("admin.request_detail", request_id=request_id))
         req = QuoteRequest.find(request_id)
         if req is None:
             abort(404)
-        if req.status == "Quote Sent":
-            flash("A quotation was already sent, so the status can't be changed.", "warning")
-            return redirect(url_for("admin.request_detail", request_id=request_id))
-        req.set_status(request.form.get("status", ""))
+        req.admin_set_status(request.form.get("status", ""))
         flash(f"Status changed to {req.status}.", "success")
     except ValueError as error:
         flash(str(error), "warning")
@@ -109,9 +128,12 @@ def catalog_new():
         data, errors = validate_catalog_item(request.form, CATEGORIES)
         if not errors:
             try:
-                CatalogItem(data["name"], data["category"], data["description"], data["is_active"]).save()
-                flash("Item added to the catalog.", "success")
-                return redirect(url_for("admin.catalog_list"))
+                if CatalogItem.name_exists(data["name"], data["category"]):
+                    errors["name"] = "That item already exists in this category."
+                else:
+                    CatalogItem(data["name"], data["category"], data["description"], data["is_active"]).save()
+                    flash("Item added to the catalog.", "success")
+                    return redirect(url_for("admin.catalog_list"))
             except pymysql.MySQLError:
                 flash(DB_DOWN, "danger")
     return render_template("admin_catalog_form.html", item=None, form=form, errors=errors, categories=CATEGORIES)
@@ -130,6 +152,8 @@ def catalog_edit(item_id):
         if request.method == "POST":
             form = request.form
             data, errors = validate_catalog_item(request.form, CATEGORIES)
+            if not errors and CatalogItem.name_exists(data["name"], data["category"], item.id):
+                errors["name"] = "That item already exists in this category."
             if not errors:
                 item.name = data["name"]
                 item.category = data["category"]

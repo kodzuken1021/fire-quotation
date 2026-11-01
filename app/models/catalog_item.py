@@ -1,9 +1,10 @@
 from ..db import get_db
+from .base import BaseModel
 
 CATEGORIES = ("Extinguisher", "FDAS", "Suppression System", "Service")
 
 
-class CatalogItem:
+class CatalogItem(BaseModel):
     """A product or service shown in the public catalog (never has a price)."""
 
     def __init__(self, name, category, description="", is_active=True, id=None):
@@ -112,38 +113,38 @@ class CatalogItem:
             cur.execute("SELECT DISTINCT item_id FROM quote_request_items")
             return {r["item_id"] for r in cur.fetchall()}
 
+    @staticmethod
+    def name_exists(name, category, exclude_id=None):
+        """True if another item in this category already has this name."""
+        sql = "SELECT 1 FROM catalog_items WHERE category = %s AND name = %s"
+        params = [category, (name or "").strip()]
+        if exclude_id is not None:
+            sql += " AND id <> %s"
+            params.append(exclude_id)
+        with get_db().cursor() as cur:
+            cur.execute(sql, params)
+            return cur.fetchone() is not None
+
     def delete(self):
         """Permanent delete, only if no request ever used this item."""
         if self._id is None:
             raise ValueError("Item is not saved yet.")
-        conn = get_db()
-        try:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "DELETE FROM catalog_items WHERE id = %s "
-                    "AND NOT EXISTS (SELECT 1 FROM quote_request_items WHERE item_id = %s)",
-                    (self._id, self._id))
-                deleted = cur.rowcount
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
+        with self.transaction() as cur:
+            cur.execute(
+                "DELETE FROM catalog_items WHERE id = %s "
+                "AND NOT EXISTS (SELECT 1 FROM quote_request_items WHERE item_id = %s)",
+                (self._id, self._id))
+            deleted = cur.rowcount
         if not deleted:
             raise ValueError("This item is used in a request, so it can only be hidden.")
 
     def save(self):
-        conn = get_db()
-        try:
-            with conn.cursor() as cur:
-                if self._id is None:
-                    cur.execute("INSERT INTO catalog_items (name, category, description, is_active) VALUES (%s, %s, %s, %s)",
-                                (self._name, self._category, self.description, int(self.is_active)))
-                    self._id = cur.lastrowid
-                else:
-                    cur.execute("UPDATE catalog_items SET name=%s, category=%s, description=%s, is_active=%s WHERE id=%s",
-                                (self._name, self._category, self.description, int(self.is_active), self._id))
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
+        with self.transaction() as cur:
+            if self._id is None:
+                cur.execute("INSERT INTO catalog_items (name, category, description, is_active) VALUES (%s, %s, %s, %s)",
+                            (self._name, self._category, self.description, int(self.is_active)))
+                self._id = cur.lastrowid
+            else:
+                cur.execute("UPDATE catalog_items SET name=%s, category=%s, description=%s, is_active=%s WHERE id=%s",
+                            (self._name, self._category, self.description, int(self.is_active), self._id))
         return self

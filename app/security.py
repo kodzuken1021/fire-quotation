@@ -1,7 +1,7 @@
 """Small security helpers."""
 import math
 import time
-from collections import defaultdict, deque
+from collections import deque
 
 
 class LoginThrottle:
@@ -14,13 +14,18 @@ class LoginThrottle:
     def __init__(self, max_attempts=5, window_seconds=300):
         self._max = max_attempts
         self._window = window_seconds
-        self._fails = defaultdict(deque)      # key -> timestamps of recent failures
+        self._fails = {}                      # key -> timestamps of recent failures
 
     def _recent(self, key):
+        q = self._fails.get(key)
+        if q is None:
+            return deque()
         now = time.time()
-        q = self._fails[key]
         while q and now - q[0] > self._window:
             q.popleft()
+        if not q:
+            del self._fails[key]           # forget keys with no recent failures
+            return deque()
         return q
 
     def is_blocked(self, key):
@@ -33,7 +38,7 @@ class LoginThrottle:
         return max(1, math.ceil((self._window - (time.time() - q[0])) / 60))
 
     def record_failure(self, key):
-        self._recent(key).append(time.time())
+        self._fails.setdefault(key, deque()).append(time.time())
 
     def reset(self, key):
         self._fails.pop(key, None)

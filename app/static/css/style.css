@@ -276,6 +276,8 @@ body {
 .status-inspection-scheduled { background: rgba(35, 38, 43, .1); color: var(--brand-charcoal); }
 .status-quote-sent { background: rgba(46, 125, 50, .12); color: #1f5a23; }
 .status-cancelled { background: rgba(198, 40, 40, .12); color: var(--brand-red-dark); }
+.status-accepted { background: rgba(46, 125, 50, .22); color: #1f5a23; }
+.status-declined { background: rgba(35, 38, 43, .1); color: #6b7078; }
 
 /* Profile photo */
 .avatar { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid var(--brand-yellow); }
@@ -285,3 +287,22 @@ body {
 }
 
 .col-price { width: 12rem; }
+.form-narrow { max-width: 640px; }
+
+/* Admin calendar */
+.cal-scroll { overflow-x: auto; }
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); min-width: 760px; }
+.cal-head { padding: .5rem; font-size: .8rem; font-weight: 800; text-transform: uppercase; color: #6b7078; border-bottom: 1px solid var(--card-border); }
+.cal-day { min-height: 110px; padding: .35rem; border-right: 1px solid var(--card-border); border-bottom: 1px solid var(--card-border); }
+.cal-day:nth-child(7n + 7) { border-right: 0; }
+.cal-day.is-other { background: #faf7ef; color: #a0a4ab; }
+.cal-day.is-today { box-shadow: inset 0 0 0 2px var(--brand-red); }
+.cal-num { font-size: .85rem; font-weight: 700; margin-bottom: .25rem; }
+.cal-event {
+  display: block; margin-bottom: .2rem; padding: .15rem .4rem; border-radius: 6px;
+  font-size: .75rem; font-weight: 700; line-height: 1.3; text-decoration: none;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cal-event.is-confirmed, .cal-dot.is-confirmed { background: var(--brand-red); color: #fff; }
+.cal-event.is-preferred, .cal-dot.is-preferred { background: rgba(245, 179, 1, .35); color: #7a5a00; }
+.cal-dot { display: inline-block; width: .8rem; height: .8rem; border-radius: 3px; vertical-align: middle; }

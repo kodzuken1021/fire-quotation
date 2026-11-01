@@ -2,6 +2,7 @@ from datetime import date
 from decimal import Decimal
 
 from ..db import get_db
+from .base import BaseModel
 
 QUOTABLE = ("Pending", "Inspection Scheduled")
 MAX_AMOUNT = Decimal("9999999.99")
@@ -17,7 +18,7 @@ def _money(value, label):
     return amount
 
 
-class Quotation:
+class Quotation(BaseModel):
     """The admin's priced quotation for one request (at most one per request)."""
 
     def __init__(self, request_id, valid_until=None, installation_charge=0, testing_charge=0,
@@ -70,6 +71,10 @@ class Quotation:
         return sum((l["line_total"] for l in self._lines), Decimal("0")) \
             + self._installation_charge + self._testing_charge
 
+    @property
+    def is_expired(self):
+        return bool(self.valid_until) and self.valid_until < date.today()
+
     # ---- business rules ----
     def add_line(self, item_id, quantity, unit_price):
         quantity = int(quantity)
@@ -97,43 +102,37 @@ class Quotation:
             raise ValueError("Add a price for at least one item.")
         if self.total > Decimal("9999999999.99"):
             raise ValueError("The total is too large.")
-        conn = get_db()
-        try:
-            with conn.cursor() as cur:
-                cur.execute("SELECT status FROM quote_requests WHERE id = %s FOR UPDATE", (self._request_id,))
-                row = cur.fetchone()
-                if row is None or row["status"] not in QUOTABLE:
-                    raise ValueError("Only pending or scheduled requests can be quoted.")
-                cur.execute("SELECT id, quotation_no, sent_at FROM quotations WHERE request_id = %s FOR UPDATE",
-                            (self._request_id,))
-                existing = cur.fetchone()
-                if existing and existing["sent_at"]:
-                    raise ValueError("This quotation was already sent.")
-                if existing:
-                    self._id, self._quotation_no = existing["id"], existing["quotation_no"]
-                    cur.execute(
-                        "UPDATE quotations SET installation_charge=%s, testing_charge=%s, "
-                        "total_amount=%s, valid_until=%s WHERE id=%s",
-                        (self._installation_charge, self._testing_charge, self.total,
-                         self.valid_until, self._id))
-                    cur.execute("DELETE FROM quotation_items WHERE quotation_id = %s", (self._id,))
-                else:
-                    self._quotation_no = f"QT-{date.today().year}-{self._request_id:05d}"
-                    cur.execute(
-                        "INSERT INTO quotations (request_id, quotation_no, installation_charge, "
-                        "testing_charge, total_amount, valid_until) VALUES (%s,%s,%s,%s,%s,%s)",
-                        (self._request_id, self._quotation_no, self._installation_charge,
-                         self._testing_charge, self.total, self.valid_until))
-                    self._id = cur.lastrowid
-                cur.executemany(
-                    "INSERT INTO quotation_items (quotation_id, item_id, quantity, unit_price, line_total) "
-                    "VALUES (%s,%s,%s,%s,%s)",
-                    [(self._id, l["item_id"], l["quantity"], l["unit_price"], l["line_total"])
-                     for l in self._lines])
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
+        with self.transaction() as cur:
+            cur.execute("SELECT status FROM quote_requests WHERE id = %s FOR UPDATE", (self._request_id,))
+            row = cur.fetchone()
+            if row is None or row["status"] not in QUOTABLE:
+                raise ValueError("Only pending or scheduled requests can be quoted.")
+            cur.execute("SELECT id, quotation_no, sent_at FROM quotations WHERE request_id = %s FOR UPDATE",
+                        (self._request_id,))
+            existing = cur.fetchone()
+            if existing and existing["sent_at"]:
+                raise ValueError("This quotation was already sent.")
+            if existing:
+                self._id, self._quotation_no = existing["id"], existing["quotation_no"]
+                cur.execute(
+                    "UPDATE quotations SET installation_charge=%s, testing_charge=%s, "
+                    "total_amount=%s, valid_until=%s WHERE id=%s",
+                    (self._installation_charge, self._testing_charge, self.total,
+                     self.valid_until, self._id))
+                cur.execute("DELETE FROM quotation_items WHERE quotation_id = %s", (self._id,))
+            else:
+                self._quotation_no = f"QT-{date.today().year}-{self._request_id:05d}"
+                cur.execute(
+                    "INSERT INTO quotations (request_id, quotation_no, installation_charge, "
+                    "testing_charge, total_amount, valid_until) VALUES (%s,%s,%s,%s,%s,%s)",
+                    (self._request_id, self._quotation_no, self._installation_charge,
+                     self._testing_charge, self.total, self.valid_until))
+                self._id = cur.lastrowid
+            cur.executemany(
+                "INSERT INTO quotation_items (quotation_id, item_id, quantity, unit_price, line_total) "
+                "VALUES (%s,%s,%s,%s,%s)",
+                [(self._id, l["item_id"], l["quantity"], l["unit_price"], l["line_total"])
+                 for l in self._lines])
         return self
 
     @staticmethod
@@ -153,18 +152,12 @@ class Quotation:
 # --- PDF Quotation
     def mark_sent(self, pdf_filename):
         """Called only after the email went out: record the PDF and set the request to Quote Sent."""
-        conn = get_db()
-        try:
-            with conn.cursor() as cur:
-                cur.execute("UPDATE quotations SET pdf_path=%s, sent_at=NOW() "
-                            "WHERE id=%s AND sent_at IS NULL", (pdf_filename, self._id))
-                if cur.rowcount != 1:
-                    raise ValueError("This quotation was already sent.")
-                cur.execute("UPDATE quote_requests SET status='Quote Sent' "
-                            "WHERE id=%s AND status IN ('Pending','Inspection Scheduled')",
-                            (self._request_id,))
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
+        with self.transaction() as cur:
+            cur.execute("UPDATE quotations SET pdf_path=%s, sent_at=NOW() "
+                        "WHERE id=%s AND sent_at IS NULL", (pdf_filename, self._id))
+            if cur.rowcount != 1:
+                raise ValueError("This quotation was already sent.")
+            cur.execute("UPDATE quote_requests SET status='Quote Sent' "
+                        "WHERE id=%s AND status IN ('Pending','Inspection Scheduled')",
+                        (self._request_id,))
         self._pdf_path = pdf_filename

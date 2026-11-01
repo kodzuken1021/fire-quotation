@@ -5,6 +5,33 @@ document.querySelectorAll("form[data-confirm]").forEach(form => {
   });
 });
 
+// Disable submit controls only after every validation handler has accepted the form.
+document.querySelectorAll("form").forEach(form => {
+  form.addEventListener("submit", e => {
+    if (form.dataset.submitting === "true") {
+      e.preventDefault();
+      return;
+    }
+    setTimeout(() => {
+      if (e.defaultPrevented) return;
+      form.dataset.submitting = "true";
+      form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(control => {
+        control.disabled = true;
+      });
+    }, 0);
+  });
+});
+
+// Restore forms when a browser returns to a cached page after submission.
+window.addEventListener("pageshow", () => {
+  document.querySelectorAll('form[data-submitting="true"]').forEach(form => {
+    delete form.dataset.submitting;
+    form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(control => {
+      control.disabled = false;
+    });
+  });
+});
+
 // Warn before uploading a file larger than data-max-mb.
 document.querySelectorAll('input[type="file"][data-max-mb]').forEach(input => {
   input.addEventListener("change", () => {

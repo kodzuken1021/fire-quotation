@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS catalog_items (
 CREATE TABLE IF NOT EXISTS quote_requests (
   id                         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   user_id                    INT UNSIGNED NOT NULL,
-  status                     ENUM('Pending','Inspection Scheduled','Quote Sent','Cancelled')
+  status                     ENUM('Pending','Inspection Scheduled','Quote Sent','Accepted','Declined','Cancelled')
                              NOT NULL DEFAULT 'Pending',
   needs_installation         TINYINT(1) NOT NULL DEFAULT 0,
   needs_testing              TINYINT(1) NOT NULL DEFAULT 0,

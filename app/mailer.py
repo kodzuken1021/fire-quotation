@@ -6,12 +6,17 @@ from flask_mail import Message
 from .extensions import mail
 
 
-def _send(subject, recipient, body):
+def _send(subject, recipient, body, attachment=None):
+    """attachment = (path_on_disk, file_name_in_email) for a PDF, or None."""
     if not current_app.config.get("MAIL_USERNAME"):
         current_app.logger.warning("Email skipped: MAIL_USERNAME is not set in .env")
         return False
     try:
-        mail.send(Message(subject, recipients=[recipient], body=body))
+        msg = Message(subject, recipients=[recipient], body=body)
+        if attachment:
+            with open(attachment[0], "rb") as f:
+                msg.attach(attachment[1], "application/pdf", f.read())
+        mail.send(msg)
         return True
     except Exception:                      # SMTP error, no internet, bad password, no sender
         current_app.logger.exception("Email could not be sent to %s", recipient)
@@ -50,21 +55,22 @@ def send_inspection_schedule(user, req):
     return _send(f"Inspection schedule for request #{req.id}", user.email, body)
 
 def send_quotation(user, req, pdf_path):
-    if not current_app.config.get("MAIL_USERNAME"):
-        current_app.logger.warning("Email skipped: MAIL_USERNAME is not set in .env")
-        return False
     body = (
         f"Hello {user.full_name},\n\n"
         f"Thank you for your request #{req.id}. Your official quotation is attached as a PDF.\n\n"
         "If you have questions or want to proceed, reply to this email.\n\n"
         "LS Ramos Safety Supplies and Services"
     )
-    try:
-        msg = Message(f"Official quotation for request #{req.id}", recipients=[user.email], body=body)
-        with open(pdf_path, "rb") as f:
-            msg.attach(f"Quotation-{req.id}.pdf", "application/pdf", f.read())
-        mail.send(msg)
-        return True
-    except Exception:
-        current_app.logger.exception("Quotation email could not be sent to %s", user.email)
-        return False
+    return _send(f"Official quotation for request #{req.id}", user.email, body,
+                 attachment=(pdf_path, f"Quotation-{req.id}.pdf"))
+
+def send_password_reset(user, link):
+    body = (
+        f"Hello {user.full_name},\n\n"
+        "We received a request to reset your password. Open the link below to choose a new one. "
+        "The link works for 30 minutes and can be used once.\n\n"
+        f"{link}\n\n"
+        "If you did not ask for this, ignore this email and your password will stay the same.\n\n"
+        "LS Ramos Safety Supplies and Services"
+    )
+    return _send("Reset your password", user.email, body)

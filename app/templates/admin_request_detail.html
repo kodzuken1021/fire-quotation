@@ -38,7 +38,7 @@
   <p class="mb-2"><strong>Scheduled date:</strong>
     {{ req.inspection_date.strftime('%b %d, %Y') if req.inspection_date else 'Not scheduled yet' }}</p>
   {% if req.status in ('Pending', 'Inspection Scheduled') %}
-  <form method="post" action="{{ url_for('admin.schedule_inspection', request_id=req.id) }}" class="d-flex gap-2 align-items-end mb-2">
+  <form method="post" action="{{ url_for('admin.schedule_inspection', request_id=req.id) }}" class="d-flex flex-wrap gap-2 align-items-end mb-2">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div>
       <label class="form-label small mb-1" for="inspection_date">Inspection date</label>
@@ -57,7 +57,8 @@
   {% if quotation %}
   <p class="mb-1"><strong>No.:</strong> {{ quotation.quotation_no }}</p>
   <p class="mb-1"><strong>Total:</strong> &#8369;{{ '{:,.2f}'.format(quotation.total) }}</p>
-  <p class="mb-2"><strong>Valid until:</strong> {{ quotation.valid_until.strftime('%b %d, %Y') if quotation.valid_until else '-' }}</p>
+  <p class="mb-2"><strong>Valid until:</strong> {{ quotation.valid_until.strftime('%b %d, %Y') if quotation.valid_until else '-' }}
+  {% if quotation.is_expired %}<span class="status-badge status-cancelled ms-1">Expired</span>{% endif %}</p>
   {% else %}
   <p class="text-muted">No quotation yet.</p>
   {% endif %}
@@ -80,13 +81,17 @@
 
 <div class="bg-white border rounded-3 p-3">
   <h2 class="h6 fw-bold">Update status</h2>
+  {% if status_options %}
   <form class="d-flex flex-wrap gap-2 mb-3" method="post" action="{{ url_for('admin.update_status', request_id=req.id) }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <select class="form-select w-auto" name="status" aria-label="Status">
-      {% for s in statuses %}<option value="{{ s }}" {% if s == req.status %}selected{% endif %}>{{ s }}</option>{% endfor %}
+    <select class="form-select w-auto" name="status" aria-label="New status">
+      {% for s in status_options %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
     </select>
     <button class="btn btn-brand" type="submit">Save status</button>
   </form>
+  {% else %}
+  <p class="text-muted mb-3">This status is final and cannot be changed manually.</p>
+  {% endif %}
   <form method="post" action="{{ url_for('admin.delete_request', request_id=req.id) }}"
         data-confirm="Permanently delete request #{{ req.id }}? This cannot be undone.">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
