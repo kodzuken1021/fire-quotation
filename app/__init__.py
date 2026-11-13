@@ -2,6 +2,7 @@ from flask import Flask, render_template
 from flask_wtf.csrf import CSRFError
 
 from config import Config
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from . import db
 from .cli import create_admin
@@ -22,6 +23,7 @@ CSP = (
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
     if not app.config.get("SECRET_KEY") or app.config["SECRET_KEY"] == "dev-only-change-me":
         raise RuntimeError(

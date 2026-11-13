@@ -15,20 +15,30 @@ admin_bp = Blueprint("admin", __name__)
 DB_DOWN = "We could not reach the database. Please try again in a moment."
 
 
+PER_PAGE = 10
+
+
 @admin_bp.route("/dashboard")
 @admin_required
 def dashboard():
     status = request.args.get("status", "")
     if status not in STATUSES:
         status = ""
-    rows, counts = [], {s: 0 for s in STATUSES}
+    q = request.args.get("q", "").strip()[:60]
+    page = request.args.get("page", 1, type=int)
+
+    rows, total, pages = [], 0, 1
+    counts = {s: 0 for s in STATUSES}
     try:
         counts = QuoteRequest.status_counts()
-        rows = QuoteRequest.all_with_clients(status or None)
+        rows, total, page, pages = QuoteRequest.search_with_clients(
+            status or None, q or None, page, PER_PAGE)
     except pymysql.MySQLError:
         flash(DB_DOWN, "danger")
+        page = 1
     return render_template("admin_dashboard.html", rows=rows, counts=counts,
-                           status=status, statuses=STATUSES)
+                           status=status, statuses=STATUSES, q=q,
+                           page=page, pages=pages, total=total, per_page=PER_PAGE)
 
 @admin_bp.route("/calendar")
 @admin_required

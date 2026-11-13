@@ -32,7 +32,7 @@
     if (fix) return "Did you mean " + fix + "?";
     if (FAKE_DOMAINS.includes(domain)) return "Please use a real email address.";
     if (RESTRICT_DOMAINS && !ALLOWED_DOMAINS.includes(domain) && !ALLOWED_SUFFIXES.some(s => domain.endsWith(s)))
-      return "Use a recognized email provider (Gmail, Yahoo, Hotmail, Outlook, iCloud, AOL)";
+      return "Use a recognized email provider (Gmail, Yahoo, Hotmail, Outlook, iCloud, AOL) or a school .edu.ph address.";
     return "";
   }
 
@@ -53,7 +53,7 @@
     },
         profile: {
       full_name: v => v.length >= 2 && v.length <= 41 && /^[A-Za-z'-]+(?: [A-Za-z'-]+)*$/.test(v) ? "" : "Full name must be 2 to 41 letters (spaces, apostrophes and hyphens allowed).",
-      email: registerEmail,
+      email: v => EMAIL_RE.test(v) ? "" : "Enter a valid email address.",   // the server applies the domain rule to clients
       contact_number: v => !PHONE_RE.test(v) ? "Enter an 11-digit mobile number starting with 09 (example: 09171234567)."
         : /(\d)\1{3,}/.test(v) ? "The number cannot repeat the same digit 4 or more times in a row." : "",
       company_name: v => COMPANY_RE.test(v) ? "" : "Company name must be 2 to 100 characters (letters, numbers and . , & ' ( ) - only)."

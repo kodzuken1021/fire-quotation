@@ -7,6 +7,27 @@
   <span class="status-badge status-{{ req.status|lower|replace(' ', '-') }}">{{ req.status }}</span>
 </div>
 
+{% if req.status == 'Cancelled' %}
+<div class="alert alert-secondary" role="status">This request was cancelled.</div>
+{% else %}
+{% set steps = ['Pending'] %}
+{% if req.wants_inspection %}{% set steps = steps + ['Inspection Scheduled'] %}{% endif %}
+{% set steps = steps + ['Quote Sent', 'Declined' if req.status == 'Declined' else 'Accepted'] %}
+{% set current = steps.index(req.status) if req.status in steps else 0 %}
+<div class="bg-white border rounded-3 p-3 mb-3">
+  <h2 class="h6 fw-bold mb-3">Progress</h2>
+  <ol class="tracker" aria-label="Request progress">
+    {% for s in steps %}
+    <li class="{% if loop.index0 < current %}is-done{% elif loop.index0 == current %}is-current{% endif %}{% if s == 'Declined' %} is-declined{% endif %}"
+        {% if loop.index0 == current %}aria-current="step"{% endif %}>
+      <span class="tracker-dot" aria-hidden="true">{% if s == 'Declined' %}&#10005;{% elif loop.index0 < current %}&#10003;{% else %}{{ loop.index }}{% endif %}</span>
+      {{ s }}
+    </li>
+    {% endfor %}
+  </ol>
+</div>
+{% endif %}
+
 <div class="bg-white border rounded-3 p-3 mb-3">
   <h2 class="h6 fw-bold">Items</h2>
   {% if details %}
@@ -41,17 +62,21 @@
   <h2 class="h6 fw-bold">Official quotation</h2>
   <p class="mb-1"><strong>No.:</strong> {{ quotation.quotation_no }}</p>
   <p class="mb-1"><strong>Total:</strong> &#8369;{{ '{:,.2f}'.format(quotation.total) }}</p>
-<p class="mb-2"><strong>Valid until:</strong> {{ quotation.valid_until.strftime('%b %d, %Y') if quotation.valid_until else '-' }}
+  <p class="mb-2"><strong>Valid until:</strong> {{ quotation.valid_until.strftime('%b %d, %Y') if quotation.valid_until else '-' }}
   {% if quotation.is_expired %}<span class="status-badge status-cancelled ms-1">Expired</span>{% endif %}</p>
   <a class="btn btn-brand" href="{{ url_for('client.download_quotation', request_id=req.id) }}" target="_blank">View / download PDF</a>
   {% if req.status == 'Quote Sent' %}
   <div class="d-flex flex-wrap gap-2 mt-3">
+    {% if quotation.is_expired %}
+    <p class="text-muted mb-0 align-self-center">This quotation has expired. Please contact us for a new one.</p>
+    {% else %}
     <form method="post" action="{{ url_for('client.respond_to_quote', request_id=req.id) }}"
           data-confirm="Accept this quotation?">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="decision" value="accept">
       <button class="btn btn-brand" type="submit">Accept quotation</button>
     </form>
+    {% endif %}
     <form method="post" action="{{ url_for('client.respond_to_quote', request_id=req.id) }}"
           data-confirm="Decline this quotation? This cannot be undone.">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -68,7 +93,7 @@
 <form class="d-inline" method="post" action="{{ url_for('client.cancel_request', request_id=req.id) }}"
       data-confirm="Cancel this request? This cannot be undone.">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-  <button class="btn btn-brand" type="submit">Cancel request</button>
+  <button class="btn btn-danger-brand" type="submit">Cancel request</button>
 </form>
 {% endif %}
 {% endblock %}

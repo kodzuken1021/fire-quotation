@@ -51,9 +51,29 @@
     {% block content %}{% endblock %}
   </main>
 
-  {% block footer %}
-<footer class="app-footer py-3 text-center small">
-  &copy; {{ config.APP_NAME }}
+{% block footer %}
+<footer class="app-footer py-4 small">
+  <div class="container">
+    <div class="row g-3">
+      <div class="col-md-4">
+        <strong>Blazer Fire Extinguisher</strong><br>
+        <a href="mailto:blazer.fireextinguishertrading@gmail.com">blazer.fireextinguishertrading@gmail.com</a><br>
+        (049) 523-9823 / +63 932-534-3195
+      </div>
+      <div class="col-md-4">
+        <strong>Fire alarm (FDAS)</strong><br>
+        <a href="mailto:inquiry@lsramossafety.com">inquiry@lsramossafety.com</a><br>
+        (049) 539-0604 / +63 922-775-0035
+      </div>
+      <div class="col-md-4">
+        <strong>Office hours</strong><br>
+        Monday to Friday<br>
+        7:30 AM - 4:30 PM (Main Branch)<br>
+        8:00 AM - 5:00 PM (Pakil and Siniloan Branches)
+      </div>
+    </div>
+    <div class="text-center mt-3">&copy; {{ config.APP_NAME }}</div>
+  </div>
 </footer>
 {% endblock %}
 

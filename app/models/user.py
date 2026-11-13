@@ -6,7 +6,8 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from ..db import get_db
 from .base import BaseModel
 
-_SELECT = "SELECT id, full_name, email, password_hash, role, company_name, contact_number, profile_photo FROM users "
+_SELECT = ("SELECT id, full_name, email, password_hash, role, company_name, "
+           "contact_number, profile_photo, email_verified FROM users ")
 # Used so a login for an unknown email takes as long as one for a real email
 _DUMMY_HASH = generate_password_hash("not-a-real-password")
 
@@ -19,7 +20,7 @@ class User(BaseModel, ABC):
     """
 
     def __init__(self, full_name, email, company_name=None, contact_number=None,
-                 password_hash=None, id=None, profile_photo=None):
+                 password_hash=None, id=None, profile_photo=None, email_verified=False):
         self._id = id
         self._full_name = full_name
         self._email = email
@@ -27,6 +28,7 @@ class User(BaseModel, ABC):
         self._contact_number = contact_number
         self._password_hash = password_hash
         self._profile_photo = profile_photo
+        self._email_verified = bool(email_verified)
 
     # ---- read-only properties ----
     @property
@@ -46,6 +48,9 @@ class User(BaseModel, ABC):
 
     @property
     def profile_photo(self): return self._profile_photo
+
+    @property
+    def email_verified(self): return self._email_verified
 
     # ---- each subclass must define these (abstraction / polymorphism) ----
     @property
@@ -76,10 +81,10 @@ class User(BaseModel, ABC):
             raise ValueError("Set a password before saving.")
         with self.transaction() as cur:
             cur.execute(
-                "INSERT INTO users (full_name, email, password_hash, role, company_name, contact_number) "
-                "VALUES (%s, %s, %s, %s, %s, %s)",
+                "INSERT INTO users (full_name, email, password_hash, role, company_name, contact_number, email_verified) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s)",
                 (self._full_name, self._email, self._password_hash, self.role,
-                 self._company_name, self._contact_number),
+                 self._company_name, self._contact_number, 1 if self.role == "admin" else 0),
             )
             new_id = cur.lastrowid
         self._id = new_id        # set only after the commit succeeded
@@ -91,7 +96,8 @@ class User(BaseModel, ABC):
             return None
         cls = _ROLE_CLASSES[row["role"]]
         return cls(row["full_name"], row["email"], row["company_name"],
-                   row["contact_number"], row["password_hash"], row["id"], row["profile_photo"])
+                   row["contact_number"], row["password_hash"], row["id"], row["profile_photo"],
+                   row["email_verified"])
 
     @staticmethod
     def find_by_email(email):
@@ -115,12 +121,15 @@ class User(BaseModel, ABC):
     def update_profile(self, full_name, email, company_name, contact_number):
         if self._id is None:
             raise ValueError("Save the user first.")
+        reverify = email != self._email and self.role == "client"
+        verified = 0 if reverify else int(self._email_verified)
         with self.transaction() as cur:
             cur.execute(
-                "UPDATE users SET full_name=%s, email=%s, company_name=%s, contact_number=%s WHERE id=%s",
-                (full_name, email, company_name, contact_number, self._id))
+                "UPDATE users SET full_name=%s, email=%s, company_name=%s, contact_number=%s, email_verified=%s WHERE id=%s",
+                (full_name, email, company_name, contact_number, verified, self._id))
         self._full_name, self._email = full_name, email
         self._company_name, self._contact_number = company_name, contact_number
+        self._email_verified = bool(verified)
 
     def change_password(self, old_password, new_password):
         if not self.verify_password(old_password):
@@ -147,11 +156,18 @@ class User(BaseModel, ABC):
             cur.execute("UPDATE users SET profile_photo=%s WHERE id=%s", (filename, self._id))
         self._profile_photo = filename
 
+    def mark_verified(self):
+        with self.transaction() as cur:
+            cur.execute("UPDATE users SET email_verified=1 WHERE id=%s", (self._id,))
+        self._email_verified = True
+
     @staticmethod
     def email_taken_by_other(email, user_id):
         with get_db().cursor() as cur:
             cur.execute("SELECT 1 FROM users WHERE email = %s AND id <> %s", (email, user_id))
             return cur.fetchone() is not None
+
+    
 
 
 class Client(User):

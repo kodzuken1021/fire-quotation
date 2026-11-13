@@ -225,6 +225,10 @@ def respond_to_quote(request_id):
         quote_request = QuoteRequest.find(request_id, session["user_id"])
         if quote_request is None:
             abort(404)
+        if decision == "accept":
+            quotation = Quotation.find_by_request(request_id)
+            if quotation and quotation.is_expired:
+                raise ValueError("This quotation has expired. Please contact us for a new one.")
         quote_request.respond_to_quote(decision == "accept")
         flash("You accepted the quotation. We will contact you to proceed." if decision == "accept"
               else "You declined the quotation.", "success" if decision == "accept" else "info")

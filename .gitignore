@@ -8,9 +8,11 @@ instance/*
 !instance/.gitkeep
 app/static/uploads/*
 !app/static/uploads/.gitkeep
+seed.py
+test_mail.py
+database/backup.sql
 # Editor / OS
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
-instance/

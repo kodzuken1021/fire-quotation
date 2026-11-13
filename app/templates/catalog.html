@@ -39,7 +39,7 @@
           <h3 class="catalog-card-title">{{ item.name }}</h3>
           <p class="catalog-card-text">{{ item.description }}</p>
           <a class="btn btn-brand btn-sm"
-             href="{{ url_for('client.new_request', item=item.id) if session.get('role') == 'client' else (url_for('admin.dashboard') if session.get('user_id') else url_for('auth.register')) }}">Request a quote</a>
+             href="{{ url_for('client.new_request', item=item.id) if session.get('role') == 'client' else (url_for('admin.dashboard') if session.get('user_id') else url_for('auth.login', next=url_for('client.new_request', item=item.id))) }}">Request a quote</a>
         </article>
       </div>
       {% endfor %}

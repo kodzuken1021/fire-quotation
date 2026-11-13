@@ -9,6 +9,16 @@
   const peso = n => "\u20B1" + n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const raw = input => input.value.replace(/,/g, "").trim();
 
+  function problem(input) {
+    const v = raw(input);
+    if (!MONEY.test(v)) return input.classList.contains("charge")
+      ? "Enter an amount from 0 to 9,999,999.99."
+      : "Enter a unit price of at least 1.00 (up to 9,999,999.99).";
+    if (!input.classList.contains("charge") && +v < 1)
+      return "Enter a unit price of at least 1.00 (up to 9,999,999.99).";
+    return "";
+  }
+
   function recalc() {
     let total = 0;
     inputs.forEach(input => {
@@ -29,14 +39,14 @@
   }
 
   inputs.forEach(input => input.addEventListener("input", () => {
-    if (input.classList.contains("is-invalid")) setError(input, MONEY.test(raw(input)) ? "" : "Enter an amount from 0 to 9,999,999.99.");
+    if (input.classList.contains("is-invalid")) setError(input, problem(input));
     recalc();
   }));
 
   form.addEventListener("submit", e => {
     let firstBad = null;
     inputs.forEach(input => {
-      const ok = setError(input, MONEY.test(raw(input)) ? "" : "Enter an amount from 0 to 9,999,999.99.");
+      const ok = setError(input, problem(input));
       if (!ok && !firstBad) firstBad = input;
     });
     const date = document.getElementById("valid_until");

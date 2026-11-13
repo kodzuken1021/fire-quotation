@@ -5,6 +5,17 @@ from flask_mail import Message
 
 from .extensions import mail
 
+BUSINESS = "Blazer Fire Extinguisher"
+
+CONTACT = (
+    f"{BUSINESS}\n"
+    "Email: blazer.fireextinguishertrading@gmail.com\n"
+    "Phone: (049) 523-9823 / +63 932-534-3195\n"
+    "Fire alarm (FDAS): inquiry@lsramossafety.com | (049) 539-0604 / +63 922-775-0035\n"
+    "Monday to Friday: 7:30 AM - 4:30 PM (Main Branch); "
+    "8:00 AM - 5:00 PM (Pakil and Siniloan Branches)"
+)
+
 
 def _send(subject, recipient, body, attachment=None):
     """attachment = (path_on_disk, file_name_in_email) for a PDF, or None."""
@@ -39,7 +50,7 @@ def send_request_received(user, req):
             f"Preferred date: {req.preferred_date.strftime('%B %d, %Y') if req.preferred_date else 'No preference'}\n"
             "We will email you the confirmed schedule.\n"
         )
-    body += "\nWe will review your request and email your official quotation.\n\nLS Ramos Safety Supplies and Services"
+    body += "\nWe will review your request and email your official quotation.\n\n" + CONTACT
     return _send(f"Quote request #{req.id} received", user.email, body)
 
 
@@ -50,19 +61,21 @@ def send_inspection_schedule(user, req):
         f"{req.inspection_date.strftime('%A, %B %d, %Y')}.\n"
         f"Site address: {req.inspection_address}\n\n"
         "If this date does not work for you, reply to this email and we will reschedule.\n\n"
-        "LS Ramos Safety Supplies and Services"
+        + CONTACT
     )
     return _send(f"Inspection schedule for request #{req.id}", user.email, body)
+
 
 def send_quotation(user, req, pdf_path):
     body = (
         f"Hello {user.full_name},\n\n"
         f"Thank you for your request #{req.id}. Your official quotation is attached as a PDF.\n\n"
         "If you have questions or want to proceed, reply to this email.\n\n"
-        "LS Ramos Safety Supplies and Services"
+        + CONTACT
     )
     return _send(f"Official quotation for request #{req.id}", user.email, body,
                  attachment=(pdf_path, f"Quotation-{req.id}.pdf"))
+
 
 def send_password_reset(user, link):
     body = (
@@ -71,6 +84,18 @@ def send_password_reset(user, link):
         "The link works for 30 minutes and can be used once.\n\n"
         f"{link}\n\n"
         "If you did not ask for this, ignore this email and your password will stay the same.\n\n"
-        "LS Ramos Safety Supplies and Services"
+        + BUSINESS
     )
     return _send("Reset your password", user.email, body)
+
+
+def send_verification(user, link):
+    body = (
+        f"Hello {user.full_name},\n\n"
+        "Thank you for registering. Open the link below to verify your email address. "
+        "The link works for 24 hours.\n\n"
+        f"{link}\n\n"
+        "If you did not create an account, ignore this email.\n\n"
+        + BUSINESS
+    )
+    return _send("Verify your email", user.email, body)

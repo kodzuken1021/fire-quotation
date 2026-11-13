@@ -14,7 +14,7 @@ def _bool(value, default=False):
 
 
 class Config:
-    APP_NAME = "Fire Protection Quotation System"
+    APP_NAME = "Blazer Fire Extinguisher"
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-only-change-me")
 
     # Database

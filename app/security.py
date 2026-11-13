@@ -5,11 +5,6 @@ from collections import deque
 
 
 class LoginThrottle:
-    """Blocks repeated failed logins for a while.
-
-    Kept in memory, so it resets when the server restarts. That is fine for a school
-    project; a production site would store the counters in Redis or the database.
-    """
 
     def __init__(self, max_attempts=5, window_seconds=300):
         self._max = max_attempts

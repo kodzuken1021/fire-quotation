@@ -1,13 +1,21 @@
 import os
+from datetime import date
 from xml.sax.saxutils import escape
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-COMPANY = "LS Ramos Safety Supplies and Services"
+COMPANY = "Blazer Fire Extinguisher"
+
+# One line per entry; shown centered under the company name on the PDF.
+CONTACT_LINES = [
+    "Fire extinguishers: blazer.fireextinguishertrading@gmail.com | (049) 523-9823 / +63 932-534-3195",
+    "Fire alarm (FDAS): inquiry@lsramossafety.com | (049) 539-0604 / +63 922-775-0035",
+    "Monday to Friday: 7:30 AM - 4:30 PM (Main Branch); 8:00 AM - 5:00 PM (Pakil and Siniloan Branches)",
+]
 
 
 def _php(value):
@@ -19,15 +27,22 @@ def build_quotation_pdf(folder, quotation, req, client):
     os.makedirs(folder, exist_ok=True)
     filename = f"{quotation.quotation_no}.pdf"
     styles = getSampleStyleSheet()
+    contact_style = ParagraphStyle("Contact", parent=styles["Normal"], alignment=1,
+                                   fontSize=9, textColor=colors.HexColor("#5a5f66"))
     doc = SimpleDocTemplate(os.path.join(folder, filename), pagesize=A4,
                             leftMargin=20 * mm, rightMargin=20 * mm, topMargin=18 * mm, bottomMargin=18 * mm,
                             title=f"Quotation {quotation.quotation_no}")
 
-    story = [
-        Paragraph(escape(COMPANY), styles["Title"]),
+    story = [Paragraph(escape(COMPANY), styles["Title"])]
+    for line in CONTACT_LINES:
+        story.append(Paragraph(escape(line), contact_style))
+    story.append(Spacer(1, 4 * mm))
+
+    story += [
         Paragraph("OFFICIAL QUOTATION", styles["Heading2"]),
         Paragraph(f"<b>Quotation no.:</b> {escape(quotation.quotation_no)}", styles["Normal"]),
         Paragraph(f"<b>Request no.:</b> {req.id}", styles["Normal"]),
+        Paragraph(f"<b>Date issued:</b> {date.today().strftime('%B %d, %Y')}", styles["Normal"]),
         Paragraph(f"<b>Valid until:</b> {quotation.valid_until.strftime('%B %d, %Y') if quotation.valid_until else '-'}",
                   styles["Normal"]),
         Spacer(1, 6 * mm),
@@ -61,7 +76,9 @@ def build_quotation_pdf(folder, quotation, req, client):
         ("TOPPADDING", (0, 0), (-1, -1), 5), ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
     ]))
     story += [table, Spacer(1, 8 * mm),
-              Paragraph("Thank you for your request. To proceed, please reply to the email this quotation came with.",
+              Paragraph("Thank you for your request. To proceed, log in to your account and accept or decline "
+                        "this quotation under My Requests. For questions, contact us using the details above.",
                         styles["Normal"])]
+
     doc.build(story)
     return filename

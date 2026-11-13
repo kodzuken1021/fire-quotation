@@ -52,7 +52,7 @@
           <form class="d-inline" method="post" action="{{ url_for('admin.catalog_delete', item_id=item.id) }}"
                 data-confirm="Permanently delete this item? This cannot be undone.">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button class="btn btn-sm btn-brand" type="submit">Delete</button>
+            <button class="btn btn-sm btn-danger-brand" type="submit">Delete</button>
           </form>
           {% endif %}
         </td>

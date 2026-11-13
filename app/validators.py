@@ -169,7 +169,7 @@ def validate_profile(form, is_client):
     if not (2 <= len(data["full_name"]) <= 41 and FULL_NAME_RE.match(data["full_name"])):
         errors["full_name"] = "Full name must be 2 to 41 letters (spaces, apostrophes and hyphens allowed)."
 
-    data["email"], err = validate_email(form.get("email"))
+    data["email"], err = validate_email(form.get("email"), restrict=is_client)
     if err:
         errors["email"] = err
 
@@ -228,13 +228,14 @@ def validate_quotation(form, details, needs_installation, needs_testing):
     """details = request.item_details(). Returns (data, errors)."""
     errors, lines = {}, []
     msg = "Enter an amount from 0 to 9,999,999.99."
+    price_msg = "Enter a unit price of at least 1.00 (up to 9,999,999.99)."
 
     for d in details:
         raw = clean(form.get(f"price_{d['id']}")).replace(",", "")
-        if MONEY_RE.fullmatch(raw):
+        if MONEY_RE.fullmatch(raw) and Decimal(raw) >= Decimal("1"):
             lines.append((d["id"], d["quantity"], Decimal(raw)))
         else:
-            errors[f"price_{d['id']}"] = msg
+            errors[f"price_{d['id']}"] = price_msg
 
     charges = {}
     for key, needed in (("installation_charge", needs_installation), ("testing_charge", needs_testing)):

@@ -1,12 +1,13 @@
 import os
 import uuid
+from urllib.parse import urlsplit
 
 import pymysql
 from flask import (Blueprint, current_app, flash, redirect, render_template,
                    request, session, url_for)
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
-from ..mailer import send_password_reset
+from ..mailer import send_password_reset, send_verification
 
 from ..decorators import login_required
 from ..models.user import Client, User
@@ -17,7 +18,27 @@ auth_bp = Blueprint("auth", __name__)
 
 DB_DOWN = "We could not reach the database. Please try again in a moment."
 
-RESET_MAX_AGE = 30 * 60          # reset links last 30 minutes
+VERIFY_MAX_AGE = 24 * 60 * 60    # verification links last 24 hours
+RESET_MAX_AGE = 30 * 60    # reset links last 30 minutes
+
+def _verify_serializer():
+    return URLSafeTimedSerializer(current_app.config["SECRET_KEY"], salt="email-verify")
+
+
+def _send_verification_email(user):
+    token = _verify_serializer().dumps({"id": user.id, "email": user.email})
+    link = url_for("auth.verify_email", token=token, _external=True)
+    return send_verification(user, link)
+
+def _safe_next(target):
+    """Return target only if it is a local path like /client/request/new?item=3.
+    Anything that could send the user to another site (https://..., //host, \\) is dropped."""
+    if not target or not target.startswith("/") or target.startswith("//") or "\\" in target:
+        return None
+    parts = urlsplit(target)
+    if parts.scheme or parts.netloc:
+        return None
+    return target
 
 
 def _serializer():
@@ -51,6 +72,7 @@ def register():
     if "user_id" in session:
         return redirect(_home_for(session.get("role")))
 
+    next_url = _safe_next(request.values.get("next"))
     form, errors = {}, {}
     if request.method == "POST":
         form = request.form
@@ -64,13 +86,16 @@ def register():
                                     data["company_name"], data["contact_number"])
                     client.set_password(data["password"])
                     client.save()
-                    flash("Account created. You can now log in.", "success")
-                    return redirect(url_for("auth.login"))
+                    if _send_verification_email(client):
+                        flash("Account created. We sent a verification link to your email. Verify it, then log in.", "success")
+                    else:
+                        flash("Account created, but we could not send the verification email. Enter your password on the login page to request a new link.", "warning")
+                    return redirect(url_for("auth.login", next=next_url))
             except pymysql.err.IntegrityError:      # two people registered the same email at once
                 errors["email"] = "That email is already registered."
             except pymysql.MySQLError:
                 flash(DB_DOWN, "danger")
-    return render_template("register.html", form=form, errors=errors)
+    return render_template("register.html", form=form, errors=errors, next_url=next_url)
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
@@ -78,6 +103,7 @@ def login():
     if "user_id" in session:
         return redirect(_home_for(session.get("role")))
 
+    next_url = _safe_next(request.values.get("next"))
     email = ""
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
@@ -95,6 +121,10 @@ def login():
                 flash(DB_DOWN, "danger")
             else:
                 if user and user.role == "client" and user.verify_password(password):
+                    if not user.email_verified:
+                        login_throttle.reset(key)
+                        flash("Please verify your email before logging in. Check your inbox for the link.", "warning")
+                        return render_template("login.html", email=email, next_url=next_url, unverified_email=email)
                     login_throttle.reset(key)
                     session.clear()                  # drop anything left from before login
                     session.permanent = True         # idle timeout: PERMANENT_SESSION_LIFETIME
@@ -102,12 +132,13 @@ def login():
                     session["role"] = user.role
                     session["name"] = user.full_name
                     flash(f"Welcome back, {user.full_name}!", "success")
-                    return redirect(url_for(user.dashboard_endpoint))
+                    # Back to where the client was going (e.g. the quote form with an item preselected)
+                    return redirect(next_url or url_for(user.dashboard_endpoint))
                 if user is None or user.role != "client":
                     User.dummy_verify(password)      # same response time whether or not the email exists
                 login_throttle.record_failure(key)
                 flash("Invalid email or password.", "danger")   # same message for both cases on purpose
-    return render_template("login.html", email=email)
+    return render_template("login.html", email=email, next_url=next_url)
 
 @auth_bp.route("/admin/login", methods=["GET", "POST"])
 def admin_login():
@@ -199,6 +230,47 @@ def reset_password(token):
                 return redirect(url_for("auth.admin_login" if user.role == "admin" else "auth.login"))
     return render_template("reset_password.html", token=token, errors=errors)
 
+@auth_bp.route("/verify-email/<token>")
+def verify_email(token):
+    bad = "That verification link is invalid or has expired. Log in to request a new one."
+    try:
+        data = _verify_serializer().loads(token, max_age=VERIFY_MAX_AGE)
+    except BadSignature:
+        flash(bad, "danger")
+        return redirect(url_for("auth.login"))
+    try:
+        user = User.find_by_id(data.get("id"))
+        if user is None or user.email != data.get("email"):
+            flash(bad, "danger")
+        elif user.email_verified:
+            flash("Your email is already verified. You can log in.", "info")
+        else:
+            user.mark_verified()
+            flash("Email verified. You can now log in.", "success")
+    except pymysql.MySQLError:
+        flash(DB_DOWN, "danger")
+    return redirect(url_for("auth.login"))
+
+
+@auth_bp.route("/resend-verification", methods=["POST"])
+def resend_verification():
+    email, error = validate_email(request.form.get("email"), restrict=False, check_dns=False)
+    key = f"verify|{request.remote_addr}"
+    if error:
+        flash(error, "danger")
+    elif login_throttle.is_blocked(key):
+        flash(f"Too many requests. Try again in {login_throttle.minutes_left(key)} minute(s).", "danger")
+    else:
+        login_throttle.record_failure(key)          # max 5 per 5 minutes
+        try:
+            user = User.find_by_email(email)
+            if user and user.role == "client" and not user.email_verified:
+                _send_verification_email(user)
+        except pymysql.MySQLError:
+            flash(DB_DOWN, "danger")
+            return redirect(url_for("auth.login"))
+        flash("If that account still needs verification, a new link is on its way. It works for 24 hours.", "success")
+    return redirect(url_for("auth.login"))
 
 @auth_bp.route("/profile/password/reset-link", methods=["POST"])
 @login_required
@@ -257,10 +329,17 @@ def profile():
                 if User.email_taken_by_other(data["email"], user.id):
                     errors["email"] = "That email is already registered."
                 else:
+                    old_email = user.email
                     user.update_profile(data["full_name"], data["email"],
                                         data["company_name"], data["contact_number"])
                     session["name"] = user.full_name
-                    flash("Profile updated.", "success")
+                    if user.role == "client" and user.email != old_email:
+                        if _send_verification_email(user):
+                            flash("Profile updated. We sent a verification link to your new email. Verify it before your next login.", "success")
+                        else:
+                            flash("Profile updated, but we could not send the verification email. Use \"Resend verification email\" on the login page.", "warning")
+                    else:
+                        flash("Profile updated.", "success")
                     return redirect(url_for("auth.profile"))
             except pymysql.err.IntegrityError:
                 errors["email"] = "That email is already registered."

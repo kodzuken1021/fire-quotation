@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS users (
   email          VARCHAR(120) NOT NULL UNIQUE,
   password_hash  VARCHAR(255) NOT NULL,
   role           ENUM('client','admin') NOT NULL DEFAULT 'client',
+    email_verified TINYINT(1) NOT NULL DEFAULT 0,
   company_name   VARCHAR(120) NULL,
   contact_number VARCHAR(30)  NULL,
   profile_photo  VARCHAR(255) NULL,
@@ -31,7 +32,7 @@ CREATE TABLE IF NOT EXISTS catalog_items (
 ) ENGINE=InnoDB;
 
 -- One quote request per submission by a client.
--- inspection_date is the date the admin confirms (date only, no time).
+-- The free on-site inspection, if asked for, lives in the inspections table below.
 CREATE TABLE IF NOT EXISTS quote_requests (
   id                         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   user_id                    INT UNSIGNED NOT NULL,
@@ -39,14 +40,24 @@ CREATE TABLE IF NOT EXISTS quote_requests (
                              NOT NULL DEFAULT 'Pending',
   needs_installation         TINYINT(1) NOT NULL DEFAULT 0,
   needs_testing              TINYINT(1) NOT NULL DEFAULT 0,
-  wants_inspection           TINYINT(1) NOT NULL DEFAULT 0,
-  inspection_address         VARCHAR(255) NULL,
-  preferred_inspection_date  DATE NULL,
-  inspection_date            DATE NULL,
   notes                      TEXT NULL,
   created_at                 TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at                 TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_qr_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+-- Free on-site inspection: at most one per request (UNIQUE request_id).
+-- A request "wants an inspection" exactly when it has a row here.
+-- preferred_date is the client's wish; scheduled_date is the date the admin confirms (date only, no time).
+CREATE TABLE IF NOT EXISTS inspections (
+  id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  request_id     INT UNSIGNED NOT NULL UNIQUE,
+  site_address   VARCHAR(255) NOT NULL,
+  preferred_date DATE NULL,
+  scheduled_date DATE NULL,
+  created_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_insp_request FOREIGN KEY (request_id) REFERENCES quote_requests(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- Items the client selected on the request form

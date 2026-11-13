@@ -4,7 +4,7 @@
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
   <div>
     <h1 class="h3 fw-bold mb-0">My Requests</h1>
-    <p class="text-muted mb-0">Welcome, {{ session.get('name') }}.</p>
+    <p class="text-muted mb-0">Welcome, {{ session.get('name') }}. {{ requests|length }} request{{ '' if requests|length == 1 else 's' }} in total.</p>
   </div>
   <div class="d-flex gap-2">
     <a class="btn btn-outline-brand" href="{{ url_for('main.catalog') }}">Browse catalog</a>
@@ -12,12 +12,10 @@
   </div>
 </div>
 
-<div class="row g-3 mb-4">
-  <div class="col-6 col-lg-3"><div class="stat-card"><div class="stat-num">{{ requests|length }}</div>Total</div></div>
-  <div class="col-6 col-lg-3"><div class="stat-card"><div class="stat-num">{{ counts['Pending'] }}</div>Pending</div></div>
-  <div class="col-6 col-lg-3"><div class="stat-card"><div class="stat-num">{{ counts['Inspection Scheduled'] }}</div>Inspection scheduled</div></div>
-  <div class="col-6 col-lg-3"><div class="stat-card"><div class="stat-num">{{ counts['Quote Sent'] }}</div>Quote sent</div></div>
-  <div class="col-6 col-lg-3"><div class="stat-card"><div class="stat-num">{{ counts['Accepted'] }}</div>Accepted</div></div>
+<div class="row row-cols-2 row-cols-md-3 row-cols-xl-6 g-3 mb-4">
+  {% for s in ['Pending', 'Inspection Scheduled', 'Quote Sent', 'Accepted', 'Declined', 'Cancelled'] %}
+  <div class="col"><div class="stat-card"><div class="stat-num">{{ counts[s] }}</div>{{ s }}</div></div>
+  {% endfor %}
 </div>
 
 {% if not requests %}
@@ -38,20 +36,7 @@
         <td>{{ r.items|length }}</td>
         <td>{{ 'Requested' if r.wants_inspection else '-' }}</td>
         <td><span class="status-badge status-{{ r.status|lower|replace(' ', '-') }}">{{ r.status }}</span></td>
-                <td class="text-end text-nowrap">
-          <a class="btn btn-sm btn-outline-brand" href="{{ url_for('client.request_detail', request_id=r.id) }}">View</a>
-          {% if r.status in ('Quote Sent', 'Accepted', 'Declined') %}
-          <a class="btn btn-sm btn-brand" href="{{ url_for('client.download_quotation', request_id=r.id) }}" target="_blank">Quotation PDF</a>
-          {% endif %}
-          {% if r.can_be_edited() %}
-          <a class="btn btn-sm btn-outline-brand" href="{{ url_for('client.edit_request', request_id=r.id) }}">Edit</a>
-          <form class="d-inline" method="post" action="{{ url_for('client.cancel_request', request_id=r.id) }}"
-                data-confirm="Cancel this request? This cannot be undone.">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button class="btn btn-sm btn-brand" type="submit">Cancel</button>
-          </form>
-          {% endif %}
-        </td>
+        <td class="text-end"><a class="btn btn-sm btn-outline-brand" href="{{ url_for('client.request_detail', request_id=r.id) }}">View</a></td>
       </tr>
     {% endfor %}
     </tbody>
