@@ -1,11 +1,11 @@
-from ..db import get_db
+from ..db import get_db, like_pattern
 from .base import BaseModel
 
 CATEGORIES = ("Extinguisher", "FDAS", "Suppression System", "Service")
 
 
 class CatalogItem(BaseModel):
-    """A product or service shown in the public catalog (never has a price)."""
+    """A product or service shown in the public catalog."""
 
     def __init__(self, name, category, description="", is_active=True, id=None):
         self._id = id
@@ -63,7 +63,7 @@ class CatalogItem(BaseModel):
             params.append(category)
         if query:
             # escape LIKE wildcards so a typed % or _ is searched literally
-            like = "%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+            like = like_pattern(query)
             sql += " AND (name LIKE %s OR description LIKE %s)"
             params += [like, like]
         sql += " ORDER BY FIELD(category, 'Extinguisher', 'FDAS', 'Suppression System', 'Service'), name"
@@ -98,7 +98,7 @@ class CatalogItem(BaseModel):
         elif status == "hidden":
             sql += " AND is_active = 0"
         if query:
-            like = "%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+            like = like_pattern(query)
             sql += " AND (name LIKE %s OR description LIKE %s)"
             params += [like, like]
         sql += " ORDER BY FIELD(category, 'Extinguisher', 'FDAS', 'Suppression System', 'Service'), name"

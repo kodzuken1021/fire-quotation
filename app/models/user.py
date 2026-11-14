@@ -106,6 +106,16 @@ class User(BaseModel, ABC):
             return User._from_row(cur.fetchone())
 
     @staticmethod
+    def authenticate(email, password, role):
+        """Return the user if email, password and role all match, else None.
+        Unknown emails still cost one hash check, so timing does not leak."""
+        user = User.find_by_email(email)
+        if user is None or user.role != role:
+            User.dummy_verify(password)
+            return None
+        return user if user.verify_password(password) else None
+    
+    @staticmethod
     def find_by_id(user_id):
         with get_db().cursor() as cur:
             cur.execute(_SELECT + "WHERE id = %s", (user_id,))

@@ -1,6 +1,6 @@
 -- Fire Protection Quotation and Inspection Request System
 -- Works on XAMPP MariaDB / MySQL. Safe to run more than once.
--- PowerShell:  C:\xampp\mysql\bin\mysql.exe -u root < database\schema.sql
+-- PowerShell:  Get-Content database\schema.sql | C:\xampp\mysql\bin\mysql.exe -u root
 
 CREATE DATABASE IF NOT EXISTS fire_quotation
   CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

@@ -1,11 +1,12 @@
 import math
 
-from ..db import get_db
+from ..db import get_db, like_pattern
 from .base import BaseModel
 from .inspection import Inspection
 
 
 STATUSES = ("Pending", "Inspection Scheduled", "Quote Sent", "Accepted", "Declined", "Cancelled")
+QUOTABLE_STATUSES = ("Pending", "Inspection Scheduled")
 
 # Manual admin changes are deliberately limited. Inspection Scheduled is set by
 # schedule_inspection(), and Quote Sent is set only after the email is sent.
@@ -16,6 +17,12 @@ ADMIN_STATUS_TRANSITIONS = {
     "Accepted": (),
     "Declined": (),
     "Cancelled": (),
+}
+
+# What the client may do on their own: cancel while Pending, answer a sent quotation.
+CLIENT_STATUS_TRANSITIONS = {
+    "Pending": ("Cancelled",),
+    "Quote Sent": ("Accepted", "Declined"),
 }
 
 
@@ -107,8 +114,12 @@ class QuoteRequest(BaseModel):
         self._status = new_status
         self._update_status()
 
+    def client_can_change_to(self, new_status):
+        """True if the client may move this request to new_status from its current status."""
+        return new_status in CLIENT_STATUS_TRANSITIONS.get(self._status, ())
+
     def cancel(self):
-        if not self.can_be_edited():
+        if not self.client_can_change_to("Cancelled"):
             raise ValueError("Only pending requests can be cancelled.")
         self.set_status("Cancelled")
 
@@ -117,6 +128,8 @@ class QuoteRequest(BaseModel):
         if self._id is None:
             raise ValueError("Save the request first.")
         new_status = "Accepted" if accepted else "Declined"
+        if not self.client_can_change_to(new_status):
+            raise ValueError("This quotation can no longer be answered.")
         with self.transaction() as cur:
             cur.execute(
                 "UPDATE quote_requests SET status = %s WHERE id = %s AND user_id = %s AND status = 'Quote Sent'",
@@ -299,22 +312,6 @@ class QuoteRequest(BaseModel):
             cur.execute(sql, (start, end))
             return cur.fetchall()
     @staticmethod
-    def all_with_clients(status=None):
-        """Every request (admin view) as a list of (QuoteRequest, client_info_dict)."""
-        sql = ("SELECT r.*, u.full_name AS client_name, u.company_name AS client_company "
-               "FROM quote_requests r JOIN users u ON u.id = r.user_id")
-        params = []
-        if status in STATUSES:
-            sql += " WHERE r.status = %s"
-            params.append(status)
-        sql += " ORDER BY r.created_at DESC, r.id DESC"
-        with get_db().cursor() as cur:
-            cur.execute(sql, params)
-            rows = cur.fetchall()
-        return [(QuoteRequest._from_row(r),
-                 {"name": r["client_name"], "company": r["client_company"]}) for r in rows]
-
-    @staticmethod
     def search_with_clients(status=None, q=None, page=1, per_page=10):
         """Admin list with optional status filter and search (client name, company, request no.).
         Returns (rows, total, page, pages); rows is a list of (QuoteRequest, client_info_dict)."""
@@ -323,7 +320,7 @@ class QuoteRequest(BaseModel):
             where.append("r.status = %s")
             params.append(status)
         if q:
-            like = "%" + q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+            like = like_pattern(q)
             clause = "(u.full_name LIKE %s OR u.company_name LIKE %s"
             params += [like, like]
             num = q.lstrip("#").strip()

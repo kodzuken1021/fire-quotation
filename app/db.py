@@ -29,5 +29,10 @@ def close_db(error=None):
         conn.close()
 
 
+def like_pattern(text):
+    """Escape % _ and backslash so a typed wildcard is searched literally in LIKE."""
+    return "%" + text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+
+
 def init_app(app):
     app.teardown_appcontext(close_db)

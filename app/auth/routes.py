@@ -116,11 +116,11 @@ def login():
             flash(f"Too many failed attempts. Try again in {login_throttle.minutes_left(key)} minute(s).", "danger")
         else:
             try:
-                user = User.find_by_email(email)
+                user = User.authenticate(email, password, "client")
             except pymysql.MySQLError:
                 flash(DB_DOWN, "danger")
             else:
-                if user and user.role == "client" and user.verify_password(password):
+                if user:
                     if not user.email_verified:
                         login_throttle.reset(key)
                         flash("Please verify your email before logging in. Check your inbox for the link.", "warning")
@@ -132,10 +132,7 @@ def login():
                     session["role"] = user.role
                     session["name"] = user.full_name
                     flash(f"Welcome back, {user.full_name}!", "success")
-                    # Back to where the client was going (e.g. the quote form with an item preselected)
                     return redirect(next_url or url_for(user.dashboard_endpoint))
-                if user is None or user.role != "client":
-                    User.dummy_verify(password)      # same response time whether or not the email exists
                 login_throttle.record_failure(key)
                 flash("Invalid email or password.", "danger")   # same message for both cases on purpose
     return render_template("login.html", email=email, next_url=next_url)
@@ -157,11 +154,11 @@ def admin_login():
             flash(f"Too many failed attempts. Try again in {login_throttle.minutes_left(key)} minute(s).", "danger")
         else:
             try:
-                user = User.find_by_email(email)
+                user = User.authenticate(email, password, "admin")
             except pymysql.MySQLError:
                 flash(DB_DOWN, "danger")
             else:
-                if user and user.role == "admin" and user.verify_password(password):
+                if user: 
                     login_throttle.reset(key)
                     session.clear()
                     session.permanent = True
@@ -170,8 +167,6 @@ def admin_login():
                     session["name"] = user.full_name
                     flash(f"Welcome back, {user.full_name}!", "success")
                     return redirect(url_for("admin.dashboard"))
-                if user is None or user.role != "admin":
-                    User.dummy_verify(password)
                 login_throttle.record_failure(key)
                 flash("Invalid admin email or password.", "danger")
     return render_template("admin_login.html", email=email)
@@ -261,7 +256,7 @@ def resend_verification():
     elif login_throttle.is_blocked(key):
         flash(f"Too many requests. Try again in {login_throttle.minutes_left(key)} minute(s).", "danger")
     else:
-        login_throttle.record_failure(key)          # max 5 per 5 minutes
+        login_throttle.record_failure(key)  # max 5 per 5 minutes
         try:
             user = User.find_by_email(email)
             if user and user.role == "client" and not user.email_verified:

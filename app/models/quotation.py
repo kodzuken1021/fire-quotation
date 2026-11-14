@@ -136,6 +136,15 @@ class Quotation(BaseModel):
         return self
 
     @staticmethod
+    def from_data(request_id, data):
+        """Build a Quotation (not yet saved) from validated form data."""
+        quotation = Quotation(request_id, data["valid_until"],
+                              data["installation_charge"], data["testing_charge"])
+        for item_id, qty, price in data["lines"]:
+            quotation.add_line(item_id, qty, price)
+        return quotation
+
+    @staticmethod
     def find_by_request(request_id):
         with get_db().cursor() as cur:
             cur.execute("SELECT * FROM quotations WHERE request_id = %s", (request_id,))

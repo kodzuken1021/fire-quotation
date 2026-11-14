@@ -3,9 +3,7 @@ from contextlib import contextmanager
 from ..db import get_db
 
 
-class BaseModel:
-    """Shared database behaviour: one place for commit and rollback."""
-
+class BaseModel: #either save or undo
     @staticmethod
     @contextmanager
     def transaction():

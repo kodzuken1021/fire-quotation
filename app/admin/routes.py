@@ -1,14 +1,13 @@
-import os
 import pymysql
 import calendar
 from flask import current_app
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
-from ..mailer import send_inspection_schedule, send_quotation
+from ..mailer import send_inspection_schedule
 from ..decorators import admin_required
 from datetime import date, timedelta
 from ..models import CATEGORIES, STATUSES, CatalogItem, QuoteRequest, Quotation, User
 from ..validators import validate_catalog_item, validate_quotation
-from ..quotation_pdf import build_quotation_pdf
+from ..services import QuotationIssuer
 
 admin_bp = Blueprint("admin", __name__)
 
@@ -255,11 +254,7 @@ def build_quote(request_id):
             form = request.form
             data, errors = validate_quotation(form, details, req.needs_installation, req.needs_testing)
             if not errors:
-                quotation = Quotation(request_id, data["valid_until"],
-                                      data["installation_charge"], data["testing_charge"])
-                for item_id, qty, price in data["lines"]:
-                    quotation.add_line(item_id, qty, price)
-                quotation.save()
+                Quotation.from_data(request_id, data).save()
                 flash("Quotation saved.", "success")
                 return redirect(back)
         else:
@@ -303,10 +298,8 @@ def send_quote(request_id):
             flash("Client account not found.", "warning")
             return redirect(back)
 
-        folder = current_app.config["QUOTATION_FOLDER"]
-        filename = build_quotation_pdf(folder, quotation, req, client)
-        if send_quotation(client, req, os.path.join(folder, filename)):
-            quotation.mark_sent(filename)
+        issuer = QuotationIssuer(current_app.config["QUOTATION_FOLDER"])
+        if issuer.issue(quotation, req, client):
             flash("Quotation emailed to the client.", "success")
         else:
             flash("The PDF was created but the email could not be sent. Nothing was marked as sent, so you can try again.", "warning")

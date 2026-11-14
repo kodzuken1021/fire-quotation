@@ -1,6 +1,6 @@
 # Fire Protection Quotation and Inspection Request System
 
-A Flask web application where clients browse fire protection products and services (prices are not shown), submit a quote request with an optional free inspection, and receive a formal quotation by email. Admins review requests, schedule inspections, set prices and send the PDF quotation.
+A Flask web application where clients browse fire protection products and services, submit a quote request with an optional free inspection, and receive a formal quotation by email. Admins review requests, schedule inspections, set prices and send the PDF quotation.
 
 **Tech stack:** Flask (Python), MySQL/MariaDB, HTML5, CSS3, Bootstrap 5, JavaScript, Flask-WTF, Flask-Mail
 
@@ -28,7 +28,7 @@ A Flask web application where clients browse fire protection products and servic
    Open `.env` and set `SECRET_KEY`, the database values and the email (SMTP) values.
 5. **Create the database** (start MySQL in the XAMPP Control Panel first)
    ```powershell
-   C:\xampp\mysql\bin\mysql.exe -u root < database\schema.sql
+   -- PowerShell:  Get-Content database\schema.sql | C:\xampp\mysql\bin\mysql.exe -u root
    ```
    Or open phpMyAdmin, go to Import, and choose `database/schema.sql`.
 6. **Create an admin account**
@@ -47,14 +47,18 @@ A Flask web application where clients browse fire protection products and servic
 run.py                 entry point
 config.py              settings loaded from .env
 database/schema.sql    MySQL schema + sample catalog data
+tests/                 pytest tests for the model rules
 app/
   __init__.py          app factory, blueprints, error pages
-  db.py                database connection helper (parameterized queries only)
-  decorators.py        login_required, admin_required
+  db.py                database connection helper, like_pattern()
+  decorators.py        login_required, admin_required, client_required
+  validators.py        server-side form rules
+  mailer.py            SMTP emails
+  quotation_pdf.py     builds the PDF quotation
+  services.py          QuotationIssuer (PDF + email + mark sent)
+  security.py          login throttle, image check
+  cli.py               create-admin command
   main/ auth/ client/ admin/   blueprints (routes)
-  models/              OOP classes
+  models/              OOP classes (User, Admin, Client, QuoteRequest, ...)
   templates/ static/   Bootstrap UI
 ```
-
-## Client documentation
-Add the client's name, requirements discussion notes and sign-off here or in a `docs/` folder.
